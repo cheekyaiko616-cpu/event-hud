@@ -24,7 +24,7 @@ export function createHelpSheet() {
 <ul>
 <li>日程は、公開されているイベント一覧（Event list）から読み込みます。読むだけで、書き換えません。</li>
 <li>位置情報は「現在地の最寄り駅」「車の経路」を押したときだけ使い、駅探し・経路計算のために OpenStreetMap の無料サービスへ送ります。保存はしません。</li>
-<li>天気は Open-Meteo、地図は OpenStreetMap / CARTO、乗り換えの結果は Yahoo!乗換案内・Googleマップ・Appleマップの画面で表示します。</li>
+<li>天気は Open-Meteo、地図は国土地理院（地理院タイル）、駅探しは OpenStreetMap、乗り換えの結果は Yahoo!乗換案内・Googleマップ・Appleマップの画面で表示します。</li>
 <li>天気の予報は、開催日の約2週間前から出ます。</li>
 </ul>
 <button class="btn primary wide" type="button" data-act="close">閉じる</button>`;

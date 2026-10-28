@@ -10,7 +10,7 @@ Event list の日程を **読むだけ** で使います（Event list・Verdant 
 | --- | --- |
 | 日程 | Event list の `feed.json`（GitHub Pages → だめなら GitHub の生データ） |
 | 天気 | Open-Meteo |
-| 地図の画像 | OpenStreetMap ＋ CARTO（暗い色の地図） |
+| 地図の画像 | 国土地理院の「地理院タイル」（無料・登録不要。暗い色は表示のときに作る） |
 | 経路（車） | OSRM の公開サーバー |
 | 近くの駅を探す | OpenStreetMap の Overpass |
 | 乗り換え案内の結果 | Yahoo!乗換案内・Googleマップ・Appleマップの画面を開く |

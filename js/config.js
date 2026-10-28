@@ -42,12 +42,14 @@ export const CAL_ALERT = '-PT15H';
 
 // 地図（無料）と経路（無料）
 export const MAP = {
-  tiles: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  // 国土地理院の地図（無料・登録不要・日本国内のみ）。暗い色は、表示のときに色を反転して作る（css/views.css）
+  tiles: 'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+  attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>',
   home: [36.2, 138.25], homeZoom: 5,
   // 地図は日本国内だけ。この四角の外へは動かせない（沖縄・小笠原・北海道の端まで入る）
   bounds: [[20.0, 122.5], [46.0, 154.5]],
-  minZoom: 4
+  minZoom: 5,   // 国土地理院の地図は、ズーム5より引いた画像がない
+  maxZoom: 18
 };
 export const ROUTE_URL = 'https://router.project-osrm.org/route/v1/driving/';
 export const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';

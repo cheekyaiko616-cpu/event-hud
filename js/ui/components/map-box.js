@@ -42,7 +42,17 @@ export async function createMap(el, { center = MAP.home, zoom = MAP.homeZoom, la
     zoomControl: true, attributionControl: true, tap: true,
     maxBounds: MAP.bounds, maxBoundsViscosity: 1, minZoom: MAP.minZoom
   }).setView(center, zoom);
-  L.tileLayer(MAP.tiles, { attribution: MAP.attribution, maxZoom: 18, minZoom: MAP.minZoom, bounds: MAP.bounds, subdomains: 'abcd', detectRetina: true }).addTo(map);
+  const layer = L.tileLayer(MAP.tiles, { attribution: MAP.attribution, maxZoom: MAP.maxZoom, minZoom: MAP.minZoom, bounds: MAP.bounds }).addTo(map);
+  // 地図の画像が1枚も読めないとき（圏外・サービス停止）は、理由を地図の上に出す
+  let loaded = 0, failed = 0;
+  const note = document.createElement('div');
+  note.className = 'map-note';
+  note.setAttribute('role', 'status');
+  note.hidden = true;
+  note.textContent = '地図の画像を読み込めません。電波の良い所で開き直してください（会場の位置と経路の線は表示されます）。';
+  el.append(note);
+  layer.on('tileload', () => { loaded++; note.hidden = true; });
+  layer.on('tileerror', () => { failed++; if (!loaded && failed >= 4) note.hidden = false; });
   let routeLayer = null;
   return {
     map,
