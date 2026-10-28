@@ -12,6 +12,8 @@ Event list の日程を **読むだけ** で使います（Event list・Verdant 
 | 天気 | Open-Meteo |
 | 地図の画像 | OpenStreetMap ＋ CARTO（暗い色の地図） |
 | 経路（車） | OSRM の公開サーバー |
+| 近くの駅を探す | OpenStreetMap の Overpass |
+| 乗り換え案内の結果 | Yahoo!乗換案内・Googleマップ・Appleマップの画面を開く |
 | 一覧に無い会場の位置 | OpenStreetMap の検索（Nominatim。1秒に1回まで） |
 | 道案内 | iPhone 標準の「マップ」に引き継ぐ |
 
@@ -29,9 +31,14 @@ Event list の日程を **読むだけ** で使います（Event list・Verdant 
 | Event list のバックアップの読み込み | `js/data/backup.js` / 画面は `js/ui/data-sheet.js` |
 | 日程の形の整え方 | `js/data/normalize.js` |
 | 「これから」「今月」「期限」の取り出し方 | `js/data/events.js` |
-| 天気 / 位置 / 現在地 / 経路 | `js/services/weather.js` / `geo.js` / `location.js` / `route.js` |
+| 天気 / 会場の位置 / 現在地 / 車の経路 | `js/services/weather.js` / `geo.js` / `location.js` / `route.js` |
 | カレンダー追加（Event list と同じ方法） | `js/services/ics.js` / `calendar.js` |
 | マップへの引き継ぎ | `js/services/maps-link.js` |
+| 近くの駅を探す / 乗り換え案内のURL | `js/services/stations.js` / `js/services/transit-links.js` |
+| 国内かどうか・距離・歩く時間 | `js/util/geo-math.js` |
+| 予定の詳細の「行き方」（電車・バス／車） | `js/ui/views/detail-access.js` |
+| 使い方の画面 / はじめての方へ | `js/ui/help-sheet.js` / `js/ui/components/intro-card.js` |
+| 全国の駅での確認 | `tools/tests/`（README あり） |
 | 画面の切り替え | `js/ui/router.js` |
 | 各画面 | `js/ui/views/home.js` / `list.js` / `deadlines.js` / `map.js` / `detail.js` |
 | 部品 | `js/ui/components/` |

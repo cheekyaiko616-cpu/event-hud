@@ -13,7 +13,8 @@ export function createDataSheet({ onChange }) {
   function render() {
     const b = loadBackup();
     dlg.innerHTML = `<h2 id="dataTitle">データ</h2>`
-      + '<p>自動で集めた日程は、Event list の公開データから毎回読み込みます（読むだけで、Event list 側は変わりません）。</p>'
+      + '<p>日程は、公開されているイベント一覧（Event list）から毎回読み込みます。ふだんは何もしなくて大丈夫です。</p>'
+      + '<p><b>Event list を使っている方だけ</b>：自分で入力した予定も出したいときに使います。</p>'
       + `<p>自分で入力した予定を出すには、Event list の「⚙️ → バックアップを書き出す」で保存したファイルを読み込みます。<br>`
       + (b.events.length ? `<b>読み込み済み：${b.events.length}件</b>${b.savedAt ? `（${esc(b.savedAt.slice(0, 10))} 書き出し分）` : ''}` : '未読み込み') + '</p>'
       + '<label class="btn primary">バックアップを読み込む<input type="file" accept=".json,application/json" class="sr-only" data-act="file"></label>'

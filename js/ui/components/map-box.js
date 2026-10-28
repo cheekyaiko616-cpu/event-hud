@@ -37,8 +37,12 @@ export async function createMap(el, { center = MAP.home, zoom = MAP.homeZoom, la
   const L = await loadLeaflet();
   el.setAttribute('role', 'region');
   el.setAttribute('aria-label', label);
-  const map = L.map(el, { zoomControl: true, attributionControl: true, tap: true }).setView(center, zoom);
-  L.tileLayer(MAP.tiles, { attribution: MAP.attribution, maxZoom: 18, subdomains: 'abcd', detectRetina: true }).addTo(map);
+  // 日本国内だけ：この範囲の外へは動かせず、日本全体より引いて見られない
+  const map = L.map(el, {
+    zoomControl: true, attributionControl: true, tap: true,
+    maxBounds: MAP.bounds, maxBoundsViscosity: 1, minZoom: MAP.minZoom
+  }).setView(center, zoom);
+  L.tileLayer(MAP.tiles, { attribution: MAP.attribution, maxZoom: 18, minZoom: MAP.minZoom, bounds: MAP.bounds, subdomains: 'abcd', detectRetina: true }).addTo(map);
   let routeLayer = null;
   return {
     map,
@@ -52,6 +56,7 @@ export async function createMap(el, { center = MAP.home, zoom = MAP.homeZoom, la
       routeLayer = L.polyline(line, { color: '#2ee6ff', weight: 5, opacity: .9 }).addTo(map);
       map.fitBounds(routeLayer.getBounds(), { padding: [24, 24] });
     },
+    focus(pos, zoom = 13) { map.flyTo([pos.lat, pos.lon], zoom, { duration: 0.6 }); },
     fit(points) {
       if (points.length === 1) map.setView([points[0].lat, points[0].lon], 13);
       else if (points.length) map.fitBounds(points.map((p) => [p.lat, p.lon]), { padding: [30, 30], maxZoom: 12 });

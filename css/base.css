@@ -17,6 +17,7 @@ body::before {
 a { color: inherit; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--cy); outline-offset: 2px; border-radius: 6px; }
+[hidden] { display: none !important; } /* 部品側で display を指定していても、hidden なら必ず隠す */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
@@ -67,6 +68,8 @@ main { padding: 8px var(--gutter) calc(var(--nav-h) + var(--safe-b) + 24px); max
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .btn-row > :only-child { grid-column: 1 / -1; }
 .btn-col { display: grid; gap: 8px; }
+.btn.wide { width: 100%; min-height: 52px; font-size: 15px; }
+.btn[aria-busy="true"] { opacity: .7; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

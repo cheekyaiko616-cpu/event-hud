@@ -1,19 +1,19 @@
-// 予定の詳細：日程・天気・地図・経路・カレンダー追加を1画面にまとめる。
-// 天気・位置・経路は、それぞれの場所だけを書き換える（他の部分は描き直さない）。
+// 予定の詳細：日程・期限・天気・地図・行き方（電車・バス／車）・カレンダー追加を1画面にまとめる。
+// 会場の位置が分かってから、天気・地図・行き方をそれぞれの場所だけ書き換える（他の部分は描き直さない）。
 import { setHtml, esc } from '../../util/dom.js';
 import { findEvent } from '../../data/events.js';
 import { longRange, md, weekday, daysBetween, countdownLabel } from '../../util/date.js';
+import { isDomestic } from '../../util/geo-math.js';
 import { DATE_KINDS } from '../../config.js';
 import { knownPlace, locate } from '../../services/geo.js';
 import { forecast, forecastable } from '../../services/weather.js';
-import { currentPosition } from '../../services/location.js';
-import { drivingRoute, formatDuration, formatKm } from '../../services/route.js';
 import { addToCalendar } from '../../services/calendar.js';
 import { appleMapsUrl } from '../../services/maps-link.js';
 import { weatherStrip } from '../components/weather.js';
 import { createMap, mapFallback } from '../components/map-box.js';
 import { statusBlock, skeleton } from '../components/status.js';
 import { toast } from '../components/toast.js';
+import { accessHtml, bindAccess } from './detail-access.js';
 
 export const title = '予定の詳細';
 
@@ -33,16 +33,17 @@ function infoHtml(e, today) {
 export function mount(root, { params, back }) {
   const ctrl = new AbortController();
   const signal = ctrl.signal;
-  let box = null, pos, shownId = '', alive = true;
+  let box = null, pos, shownId = '', unbindAccess = () => {};
+  let lastState = null;
 
   async function loadWeather(e, today, el) {
-    if (pos === null) { setHtml(el, weatherStrip({ state: 'none' })); return; }
+    if (!e.date) { setHtml(el, '<p class="wx-note">日程が決まると、予報が出ます。</p>'); return; }
+    if (!pos) { setHtml(el, weatherStrip({ state: 'none' })); return; }
     const day = e.date < today ? today : e.date;
     if (!forecastable(day, today)) { setHtml(el, weatherStrip({ state: 'later', e, today })); return; }
-    setHtml(el, weatherStrip({ state: 'loading' }));
     try {
       const data = await forecast(pos, { signal });
-      setHtml(el, weatherStrip({ state: 'ready', e: { ...e, date: day }, today, data }));
+      if (!signal.aborted) setHtml(el, weatherStrip({ state: 'ready', e: { ...e, date: day }, today, data }));
     } catch (err) {
       if (!signal.aborted) setHtml(el, weatherStrip({ state: 'error', message: err.message }));
     }
@@ -50,32 +51,33 @@ export function mount(root, { params, back }) {
 
   async function loadMap(e, el) {
     try {
-      box = await createMap(el.querySelector('.map-box'), { center: [pos.lat, pos.lon], zoom: 13, label: `${e.place}の地図` });
-      if (!alive) { box.destroy(); box = null; return; }
+      const b = await createMap(el, { center: [pos.lat, pos.lon], zoom: 14, label: `${e.place}の地図` });
+      if (signal.aborted) { b.destroy(); return; }
+      box = b;
       box.pin(pos, { title: e.place });
     } catch (err) {
-      setHtml(el.querySelector('.map-box'), mapFallback(err.message));
+      setHtml(el, mapFallback(err.message));
     }
   }
 
-  async function showRoute(e, el, btn) {
-    btn.disabled = true;
-    btn.setAttribute('aria-busy', 'true');
-    const out = el.querySelector('.route-out');
-    setHtml(out, '<p class="wx-note" role="status">現在地と経路を調べています…</p>');
-    try {
-      const me = await currentPosition();
-      const r = await drivingRoute(me, pos, { signal });
-      if (!alive) return;
-      if (box) { box.pin(me, { me: true, title: '現在地' }); box.route(r.line); }
-      setHtml(out, `<div class="route-sum" role="status"><b>${formatDuration(r.min)}</b><span class="mono">${formatKm(r.km)}</span><span class="muted">車・目安</span></div>`
-        + `<details class="route-steps"><summary>曲がる所の一覧（${r.steps.length}）</summary><ol>${r.steps.map((s) => `<li>${esc(s.text)}${s.km ? `<small>${formatKm(s.km)}</small>` : ''}</li>`).join('')}</ol></details>`);
-    } catch (err) {
-      if (!signal.aborted) setHtml(out, `<p class="wx-note" role="alert">${esc(err.message)}</p>`);
-    } finally {
-      btn.disabled = false;
-      btn.removeAttribute('aria-busy');
+  /** 会場の位置が決まったあと：天気・地図・行き方を出す。 */
+  function placeReady(e, today) {
+    const wxEl = root.querySelector('#wx');
+    const mapWrap = root.querySelector('#mapWrap');
+    const accessWrap = root.querySelector('#accessWrap');
+    loadWeather(e, today, wxEl);
+    if (pos === null) { // 場所が無い・見つからない
+      setHtml(mapWrap, e.place && !/オンライン|配信/.test(e.place)
+        ? `<h2 class="hud">// MAP</h2><div class="card">${statusBlock({ kind: 'empty', title: '会場の位置が見つかりませんでした', message: 'マップアプリで場所名から探せます。' })}<a class="btn wide" target="_blank" rel="noopener" href="${appleMapsUrl(null, e.place)}">マップで探す</a></div>`
+        : '');
+      return;
     }
+    if (isDomestic(pos)) {
+      setHtml(mapWrap, '<h2 class="hud">// MAP</h2><div class="card"><div class="map-box"></div></div>');
+      loadMap(e, mapWrap.querySelector('.map-box'));
+    } else setHtml(mapWrap, '');
+    setHtml(accessWrap, accessHtml({ e, pos, today }));
+    unbindAccess = bindAccess(root, { e, getPos: () => pos, getBox: () => box, signal });
   }
 
   function render(s) {
@@ -88,44 +90,31 @@ export function mount(root, { params, back }) {
     if (shownId === `${e.id}|${s.today}`) return; // 同じ予定・同じ日なら描き直さない（地図を作り直さない）
     shownId = `${e.id}|${s.today}`;
     if (box) { box.destroy(); box = null; }
+    unbindAccess();
     pos = knownPlace(e.place);
-    const hasPlace = pos !== null;
     setHtml(root, `<a class="back" href="${back}">‹ 戻る</a><article class="detail">${infoHtml(e, s.today)}`
-      + `<h2 class="hud">// WEATHER 現地の予報</h2><div class="card" id="wx"></div>`
-      + (hasPlace ? `<h2 class="hud">// MAP</h2><div class="card" id="mapCard"><div class="map-box"></div>`
-        + `<div class="btn-row"><button class="btn" type="button" data-act="route">現在地から経路</button><a class="btn" data-act="open-map" target="_blank" rel="noopener" href="${appleMapsUrl(pos, e.place, { directions: true })}">マップで案内開始</a></div>`
-        + '<div class="route-out" style="margin-top:10px"></div></div>' : '')
-      + `<h2 class="hud">// CALENDAR</h2><div class="card"><div class="btn-col"><button class="btn primary" type="button" data-act="cal"${e.date || e.dates.length ? '' : ' disabled'}>iPhoneのカレンダーに追加</button>`
-      + (e.url ? `<a class="btn" href="${esc(e.url)}" target="_blank" rel="noopener">公式の情報</a>` : '') + '</div>'
+      + `<h2 class="hud">// WEATHER 現地の予報</h2><div class="card" id="wx">${weatherStrip({ state: 'loading' })}</div>`
+      + '<div id="mapWrap"></div><div id="accessWrap"></div>'
+      + `<h2 class="hud">// CALENDAR</h2><div class="card"><div class="btn-col"><button class="btn primary wide" type="button" data-act="cal"${e.date || e.dates.length ? '' : ' disabled'}>iPhoneのカレンダーに追加</button>`
+      + (e.url ? `<a class="btn wide" href="${esc(e.url)}" target="_blank" rel="noopener">公式の情報を見る</a>` : '') + '</div>'
       + `<p class="wx-note" style="margin-top:8px">前日の朝9時にお知らせ${e.dates.length ? '。申し込み・期限の日も一緒に入ります' : ''}。</p></div></article>`);
-    const wxEl = root.querySelector('#wx');
-    const mapCard = root.querySelector('#mapCard');
-    const start = async () => {
-      if (pos === undefined) { // 一覧に無い会場：調べる
-        setHtml(wxEl, weatherStrip({ state: 'loading' }));
-        try { pos = await locate(e.place, { signal }); } catch { pos = null; }
-        if (!alive) return;
-        if (!pos && mapCard) setHtml(mapCard, statusBlock({ kind: 'empty', title: '会場の位置が見つかりませんでした', message: 'マップアプリで場所名から探せます。' }) + `<a class="btn" style="width:100%" target="_blank" rel="noopener" href="${appleMapsUrl(null, e.place)}">マップで探す</a>`);
-        else if (pos && mapCard) mapCard.querySelector('[data-act="open-map"]').href = appleMapsUrl(pos, e.place, { directions: true });
-      }
-      if (e.date) loadWeather(e, s.today, wxEl); else setHtml(wxEl, '<p class="wx-note">日程が決まると、予報が出ます。</p>');
-      if (pos && mapCard) loadMap(e, mapCard);
-    };
-    start();
+    if (pos !== undefined) { placeReady(e, s.today); return; }
+    // 一覧に無い会場：位置を調べてから出す
+    setHtml(root.querySelector('#mapWrap'), '<h2 class="hud">// MAP</h2><div class="card"><p class="wx-note" role="status">会場の位置を調べています…</p></div>');
+    locate(e.place, { signal })
+      .then((p) => p, () => null)
+      .then((p) => { if (!signal.aborted) { pos = p; placeReady(e, s.today); } });
   }
 
   const onClick = (ev) => {
-    const b = ev.target.closest('[data-act]');
-    if (!b) return;
+    const b = ev.target.closest('[data-act="cal"]');
+    if (!b || !lastState) return;
     const e = findEvent(lastState.events, params.id);
-    if (!e) return;
-    if (b.dataset.act === 'cal') { addToCalendar(e); toast('カレンダーの登録画面を開きます'); }
-    if (b.dataset.act === 'route' && pos) showRoute(e, root.querySelector('#mapCard'), b);
+    if (e) { addToCalendar(e); toast('カレンダーの登録画面を開きます'); }
   };
-  let lastState = null;
   root.addEventListener('click', onClick);
   return {
     update(s) { lastState = s; render(s); },
-    unmount() { alive = false; ctrl.abort(); root.removeEventListener('click', onClick); if (box) box.destroy(); box = null; }
+    unmount() { ctrl.abort(); unbindAccess(); root.removeEventListener('click', onClick); if (box) box.destroy(); box = null; }
   };
 }

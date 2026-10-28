@@ -13,7 +13,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 export function knownPlace(place) {
   if (!place || NO_PLACE.test(place)) return null;
   const v = VENUES.find((x) => place.includes(x.match));
-  if (v) return { lat: v.lat, lon: v.lon, name: v.name };
+  if (v) return { lat: v.lat, lon: v.lon, name: v.name, station: v.station || '', stationKm: v.stationKm ?? null };
   const c = cache.get(place);
   return c === undefined ? undefined : c;
 }

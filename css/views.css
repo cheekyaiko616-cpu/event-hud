@@ -13,7 +13,35 @@
 .dl-list .past { opacity: .5; }
 
 .map-box { height: 220px; border-radius: 12px; overflow: hidden; border: 1px solid var(--edge); background: #0a1322; margin-bottom: 10px; }
-.map-full { height: calc(100dvh - 210px - var(--safe-b) - var(--safe-t)); min-height: 320px; }
+.map-full { height: 46dvh; min-height: 280px; max-height: 520px; }
+
+/* 会場を選ぶ一覧（大きく押しやすく） */
+.venue-list { list-style: none; display: grid; gap: 10px; }
+.venue { width: 100%; min-height: 72px; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  padding: 14px 44px 14px 16px; border-radius: var(--radius); border: 1px solid var(--edge); background: var(--glass); position: relative; }
+.venue::after { content: "›"; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 24px; color: var(--cy); transition: transform .2s; }
+.venue.on { border-color: var(--cy); box-shadow: var(--glow); }
+.venue.on::after { transform: translateY(-50%) rotate(90deg); }
+.venue .vn { font-size: 17px; font-weight: 700; }
+.venue .vm { font: 500 13px var(--mono); color: var(--muted); }
+.venue-events { margin-top: 8px; }
+
+/* 行き方（乗り換え案内の入力） */
+.tform { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 4px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+.field label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.field input { font: 500 17px var(--ui); /* 16px以上：iPhone で入力時に画面が拡大されないように */
+  min-height: 48px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--edge-strong); background: #081022; color: var(--fg); width: 100%; min-width: 0; -webkit-appearance: none; appearance: none; }
+.field input:focus { border-color: var(--cy); outline: none; box-shadow: var(--glow); }
+.field input::-webkit-calendar-picker-indicator { filter: invert(1); }
+.field-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.hint { font-size: 13px; color: var(--muted); }
+.err:empty { display: none; }
+.err, .err-text { font-size: 13px; color: var(--danger); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chip { min-height: 44px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--edge-strong); font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
+.chip small { font: 500 11px var(--mono); color: var(--muted); }
+.chip:active { background: rgba(46,230,255,.12); }
 .route-sum { display: flex; gap: 16px; align-items: baseline; margin: 4px 0 10px; }
 .route-sum b { font: 700 26px var(--mono); color: var(--cy); }
 .route-steps summary { min-height: var(--tap); display: flex; align-items: center; font-size: 13px; color: var(--cy); cursor: pointer; }

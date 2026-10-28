@@ -7,19 +7,30 @@ import { deadlineItem } from '../components/deadline-item.js';
 import { eventRows } from '../components/event-row.js';
 import { feedState } from './feed-state.js';
 import { fillWeather } from '../weather-fill.js';
+import { introCard, introDismissed, dismissIntro } from '../components/intro-card.js';
 
 export const title = 'ホーム';
 
 export function mount(root) {
   let ctrl = new AbortController();
-  return {
+  let last = null;
+  const onClick = (ev) => {
+    if (!ev.target.closest('[data-act="intro-close"]')) return;
+    dismissIntro();
+    if (last) view.update(last);
+    root.querySelector('h1')?.focus();
+  };
+  root.addEventListener('click', onClick);
+  const view = {
     update(s) {
+      last = s;
+      const intro = introDismissed() ? '' : introCard();
       const gate = feedState(s, ['hero', 'row', 'row', 'row']);
-      if (gate) { setHtml(root, `<h1 class="view-title sr-only" tabindex="-1">ホーム</h1>${gate}`); return; }
+      if (gate) { setHtml(root, `<h1 class="view-title sr-only" tabindex="-1">ホーム</h1>${intro}${gate}`); return; }
       const up = upcoming(s.events, s.today);
       const dls = deadlines(s.events, s.today, DEADLINE_DAYS).slice(0, 3);
       const [next, ...rest] = up;
-      const html = '<h1 class="view-title sr-only" tabindex="-1">ホーム</h1>'
+      const html = '<h1 class="view-title sr-only" tabindex="-1">ホーム</h1>' + intro
         + (s.fromCache && !s.online ? '<p class="banner" role="status">圏外のため、前回読み込んだ内容を表示しています。</p>' : '')
         + (dls.length ? `<h2 class="hud">// ALERT <small>申し込み・期限（${DEADLINE_DAYS}日以内）</small></h2>${dls.map(deadlineItem).join('')}` : '')
         + '<h2 class="hud">// NEXT EVENT</h2>'
@@ -31,6 +42,7 @@ export function mount(root) {
         fillWeather(root, s.events, s.today, ctrl.signal);
       }
     },
-    unmount() { ctrl.abort(); }
+    unmount() { ctrl.abort(); root.removeEventListener('click', onClick); }
   };
+  return view;
 }

@@ -19,10 +19,10 @@
 .row .d small { font: 500 11px var(--mono); color: var(--muted); }
 .row .x { flex: 1; min-width: 0; }
 .row .t { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.row .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .s { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .r { flex: none; text-align: right; font: 600 12px var(--mono); min-width: 52px; }
 .row .r small { display: block; font-size: 11px; color: var(--muted); }
-.row .dl { font: 700 11px var(--mono); color: var(--am); }
+.row .dl { display: block; font: 700 11px var(--mono); color: var(--am); }
 .row .wx { min-height: 16px; display: block; }
 
 .tag { display: inline-block; font: 600 11px var(--ui); padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
@@ -67,7 +67,7 @@ a.hero-link { display: block; text-decoration: none; }
 
 /* 切り替え（今週末・今月…） */
 .seg { display: flex; padding: 3px; border-radius: 12px; border: 1px solid var(--edge); background: rgba(255, 255, 255, .04); margin-bottom: 12px; }
-.seg button { flex: 1; min-height: 40px; border-radius: 9px; font-size: 13px; color: var(--muted); }
+.seg button { flex: 1; min-height: 48px; border-radius: 9px; font-size: 15px; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--cy); color: var(--on-cy); font-weight: 700; box-shadow: var(--glow); }
 
 /* 天気 */
@@ -92,3 +92,14 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 dialog.sheet h2 { font-size: 17px; margin-bottom: 6px; }
 dialog.sheet p { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
 dialog.sheet .btn { width: 100%; margin-bottom: 8px; }
+
+/* はじめての方へ・使い方 */
+.intro { border-color: var(--edge-strong); }
+.intro h2 { font-size: 16px; margin-bottom: 4px; }
+.intro p { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+dialog.help { max-height: 88dvh; overflow-y: auto; }
+dialog.help h3 { font-size: 14px; color: var(--cy); margin: 14px 0 6px; }
+dialog.help ul, dialog.help ol { padding-left: 20px; font-size: 14px; line-height: 1.7; }
+dialog.help li { margin-bottom: 4px; }
+dialog.help p { font-size: 14px; }
+dialog.help .btn { margin-top: 16px; }

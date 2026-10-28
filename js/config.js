@@ -12,13 +12,17 @@ export const KEYS = {
   feed: 'hud.feed.v1',         // 最後に読めた日程
   backup: 'hud.backup.v1',     // 読み込んだ Event list のバックアップ（自分で足した予定）
   geo: 'hud.geo.v1',           // 会場名 → 位置（調べた結果）
-  weather: 'hud.weather.v1'    // 天気予報（位置ごと）
+  weather: 'hud.weather.v1',   // 天気予報（位置ごと）
+  stations: 'hud.stations.v1', // 位置 → 近くの駅（調べた結果）
+  origin: 'hud.origin.v1',     // 前回入力した出発駅
+  intro: 'hud.intro.v1'        // 「はじめての方へ」を閉じたか
 };
 
 export const TTL = {
   feed: 30 * 60e3,        // これより新しければ、通信せずに使う
   weather: 3 * 3600e3,
-  geo: 90 * 86400e3
+  geo: 90 * 86400e3,
+  stations: 30 * 86400e3
 };
 
 export const FETCH_TIMEOUT = 10e3;
@@ -40,8 +44,22 @@ export const CAL_ALERT = '-PT15H';
 export const MAP = {
   tiles: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  home: [36.2, 138.25], homeZoom: 5
+  home: [36.2, 138.25], homeZoom: 5,
+  // 地図は日本国内だけ。この四角の外へは動かせない（沖縄・小笠原・北海道の端まで入る）
+  bounds: [[20.0, 122.5], [46.0, 154.5]],
+  minZoom: 4
 };
 export const ROUTE_URL = 'https://router.project-osrm.org/route/v1/driving/';
 export const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';
 export const GEOCODE_URL = 'https://nominatim.openstreetmap.org/search';
+export const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+
+// 乗り換え案内（結果は各サービスの画面で見る。どれも無料・登録不要）
+export const TRANSIT = {
+  yahoo: 'https://transit.yahoo.co.jp/search/result',
+  google: 'https://www.google.com/maps/dir/',
+  apple: 'https://maps.apple.com/',
+  defaultTime: '09:00',     // 初めに入れておく時刻（開催日のこの時刻に「到着」）
+  walkKmPerMin: 0.08,       // 歩く速さの目安（分速80m）
+  farKm: 2                  // 駅から会場がこれより遠いと「バス・タクシーなど」と案内する
+};

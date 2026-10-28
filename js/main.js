@@ -8,6 +8,7 @@ import { loadBackup } from './data/backup.js';
 import { mergeEvents, deadlines } from './data/events.js';
 import { startRouter } from './ui/router.js';
 import { createDataSheet } from './ui/data-sheet.js';
+import { createHelpSheet } from './ui/help-sheet.js';
 import { toast } from './ui/components/toast.js';
 
 let feedItems = [];
@@ -86,12 +87,15 @@ function start() {
 
   const sheet = createDataSheet({ onChange: rebuild });
   $('#refresh').addEventListener('click', () => refresh({ force: true }));
+  const help = createHelpSheet();
   $('#dataBtn').addEventListener('click', () => sheet.open());
+  $('#helpBtn').addEventListener('click', () => help.open());
   // 画面の中の「もう一度読み込む」「データを読み込む」
   $('#view').addEventListener('click', (ev) => {
     const act = ev.target.closest('[data-act]')?.dataset.act;
     if (act === 'refresh') refresh({ force: true });
     if (act === 'data') sheet.open();
+    if (act === 'help') help.open();
   });
 
   watchToday();

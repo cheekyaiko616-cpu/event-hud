@@ -18,7 +18,7 @@ export function weatherMini(w) {
 export function weatherStrip({ state, e, today, data, message }) {
   if (state === 'loading') return '<div class="skel" aria-hidden="true"></div><span class="sr-only" role="status">天気を読み込み中</span>';
   if (state === 'none') return '<p class="wx-note">場所が決まっていないため、天気は出せません。</p>';
-  if (state === 'error') return `<p class="wx-note" role="status">天気を取得できませんでした。${esc(message || '')}</p>`;
+  if (state === 'error') return `<p class="wx-note" role="status">天気を取得できませんでした。${message === '圏外のようです' ? '電波の良い所で開き直してください。' : 'しばらくしてから開き直してください。'}</p>`;
   if (state === 'later') {
     const from = addDays(e.date, -(WEATHER_DAYS - 1));
     return `<p class="wx-note">予報は ${md(from)}(${weekday(from)}) ごろから表示されます（あと${daysBetween(today, from)}日）。</p>`;
