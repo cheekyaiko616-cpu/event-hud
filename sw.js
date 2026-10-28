@@ -1,7 +1,8 @@
-// オフライン用。アプリ本体は保存済みを先に出し、裏で新しい版を取りに行く。
+// オフライン用。アプリ本体は「版ごとにまとめて」保存し、その版の中身だけを出す（新旧のファイルが混ざらない）。
+// 新しい版は、sw.js が変わったときにまとめて入れ替わる。切り替わったら、画面側（js/main.js）が読み込み直す。
 // 地図の画像・天気・日程はここでは保存しない（容量を使いすぎないため。日程はアプリ側で覚えている）。
 // ファイルを足したり消したりしたら、ASSETS を直して CACHE の番号を1つ上げる。
-const CACHE = 'event-hud-v2';
+const CACHE = 'event-hud-v3';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'icons/icon.svg',
   'css/tokens.css', 'css/base.css', 'css/components.css', 'css/views.css',
@@ -21,17 +22,32 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // 取りこぼしがあると古い版と混ざるので、全部そろったときだけ入れる（HTTPの保存は使わず必ず取り直す）
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil((async () => {
+    const ks = await caches.keys();
+    const old = ks.filter((k) => k !== CACHE);
+    await Promise.all(old.map((k) => caches.delete(k)));
+    await self.clients.claim();
+    // 古い版で開いている画面に「読み込み直して」と知らせる（新旧のプログラムが混ざると画面が出なくなるため）
+    if (old.length) {
+      const wins = await self.clients.matchAll({ type: 'window' });
+      wins.forEach((w) => w.postMessage({ type: 'reload' }));
+    }
+  })());
 });
 self.addEventListener('fetch', (e) => {
-  const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return; // 外の通信には関わらない
-  e.respondWith(caches.open(CACHE).then(async (c) => {
-    const hit = await c.match(e.request, { ignoreSearch: true });
-    const net = fetch(e.request).then((r) => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => hit);
-    return hit || net;
-  }));
+  const req = e.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return; // 外の通信（日程・天気・地図など）には関わらない
+  e.respondWith((async () => {
+    const c = await caches.open(CACHE);
+    // 画面そのもの（どのURLで開いても同じ index.html）
+    if (req.mode === 'navigate') return (await c.match('index.html')) || fetch(req);
+    const hit = await c.match(req, { ignoreSearch: true });
+    if (hit) return hit;
+    try { return await fetch(req); } catch { return new Response('', { status: 504, statusText: 'offline' }); }
+  })());
 });

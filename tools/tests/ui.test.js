@@ -55,7 +55,17 @@ const srv = http.createServer((q, r) => {
     }
     return rt.fulfill({ status: 204, body: '' }); // 地図の画像など
   });
-  await ctx.addInitScript(() => { window.__opened = []; window.open = (u) => { window.__opened.push(String(u)); return null; }; });
+  // 外へのリンクを押したとき、開く先のURLを記録して、実際には開かない（アプリ側の処理の後で受け取る）
+  await ctx.addInitScript(() => {
+    window.__opened = [];
+    window.open = (u) => { window.__opened.push('WINDOW.OPEN:' + u); return null; };
+    window.addEventListener('click', (ev) => {
+      const a = ev.target.closest && ev.target.closest('a[data-link]');
+      if (!a) return;
+      if (!ev.defaultPrevented) window.__opened.push(a.href);
+      ev.preventDefault();
+    });
+  });
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.clock.install({ time: new Date('2026-10-28T09:41:00+09:00') });
@@ -84,11 +94,12 @@ const srv = http.createServer((q, r) => {
       const got = await p.inputValue('#tFrom');
       if (got !== expect) throw new Error(`最寄り駅 ${got} / 正解 ${expect}`);
       await p.evaluate(() => { window.__opened = []; });
-      await p.click('form.tform button[type="submit"]');
+      await p.click('[data-link="yahoo"]');
       const opened = await p.evaluate(() => window.__opened);
       const u = new URL(opened[0] || 'about:blank');
       if (got !== v.station && (u.searchParams.get('from') !== got || u.searchParams.get('to') !== v.station || u.searchParams.get('type') !== '4' || u.searchParams.get('d') !== '14')) throw new Error(`Yahoo ${u}`);
       if (got === v.station && !(await p.textContent('#tErr')).includes('同じ')) throw new Error('同じ駅のときの注意が出ない');
+      if (opened.some((x) => x.startsWith('WINDOW.OPEN'))) throw new Error('window.open が使われた');
       const g = new URL(await p.getAttribute('[data-link="google"]', 'href'));
       if (g.searchParams.get('origin') !== `${got}駅` || g.searchParams.get('travelmode') !== 'transit') throw new Error(`Google ${g}`);
       ok++;
@@ -96,7 +107,7 @@ const srv = http.createServer((q, r) => {
       const typed = origins[(i * 7 + 3) % origins.length];
       await p.fill('#tFrom', typed.n + '駅');
       await p.evaluate(() => { window.__opened = []; });
-      await p.click('form.tform button[type="submit"]');
+      await p.click('[data-link="yahoo"]');
       const u2 = new URL((await p.evaluate(() => window.__opened))[0] || 'about:blank');
       if (clean(typed.n) !== v.station && u2.searchParams.get('from') !== clean(typed.n)) throw new Error(`入力した駅 ${u2.searchParams.get('from')} / ${typed.n}`);
       typedOk++;
@@ -104,6 +115,9 @@ const srv = http.createServer((q, r) => {
       await p.click('[data-seg="mode"] [data-value="car"]');
       if (await p.locator('form.tform').isVisible()) throw new Error('車を選んでも電車の入力欄が見えている');
       if (!(await p.locator('[data-act="route"]').isVisible())) throw new Error('車の経路ボタンが見えない');
+      const nav = new URL(await p.getAttribute('[data-link="carnavi"]', 'href'));
+      const pts = nav.href.split('?')[1].split('&');
+      if (nav.protocol !== 'yjcarnavi:' || pts[0] !== 'point=current' || !pts[1].startsWith(`point=${v.lat.toFixed(7)},${v.lon.toFixed(7)},`)) throw new Error(`カーナビ ${nav.href}`);
       await p.click('[data-act="route"]');
       await p.waitForSelector('.route-sum', { timeout: 5000 });
       carOk++;
@@ -122,7 +136,7 @@ const srv = http.createServer((q, r) => {
     await p.waitForSelector('#access form');
     await p.fill('#tFrom', '東京');
     await p.evaluate(() => { window.__opened = []; });
-    await p.click('form.tform button[type="submit"]');
+    await p.click('[data-link="yahoo"]');
     const u = new URL((await p.evaluate(() => window.__opened))[0] || 'about:blank');
     if (u.searchParams.get('to') === v.station) allVenues++; else fails.push(`${v.name}: 到着駅 ${u.searchParams.get('to')}`);
   }
@@ -162,7 +176,7 @@ const srv = http.createServer((q, r) => {
   // 入力なしで検索
   await p.click('[data-seg="mode"] [data-value="transit"]');
   await p.fill('#tFrom', '');
-  await p.click('form.tform button[type="submit"]');
+  await p.click('[data-link="yahoo"]');
   console.log(`出発駅なし: ${await p.textContent('#tErr')} / 入力欄に移動: ${await p.evaluate(() => document.activeElement.id)}`);
 
   // 地図：国内だけ・範囲外へ動かせない・一覧で選べる

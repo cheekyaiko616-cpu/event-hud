@@ -38,7 +38,10 @@ export function startRouter({ root, nav, appName }) {
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     let mod;
-    try { mod = await ROUTES[name](); } catch { root.innerHTML = '<p class="status">画面を読み込めませんでした。通信を確かめて、開き直してください。</p>'; return; }
+    try { mod = await ROUTES[name](); } catch {
+      root.innerHTML = '<div class="status" role="alert"><b>画面を読み込めませんでした</b><p>通信を確かめて、開き直してください。</p><button class="btn" type="button" onclick="location.reload()">開き直す</button></div>';
+      return;
+    }
     if (my !== token) return; // 読み込み中に別の画面へ移った
     root.innerHTML = '';
     root.__html = undefined;
@@ -56,4 +59,10 @@ export function startRouter({ root, nav, appName }) {
 
   addEventListener('hashchange', go);
   go();
+  return {
+    /** 画面が空になっていたら（他のアプリから戻ったときなど）、今の画面を描き直す。 */
+    repair() {
+      if (!root.firstElementChild || root.querySelector('.boot')) go();
+    }
+  };
 }

@@ -36,6 +36,8 @@
 .field input::-webkit-calendar-picker-indicator { filter: invert(1); }
 .field-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .hint { font-size: 13px; color: var(--muted); }
+.when-sum { font: 700 14px var(--ui); color: var(--cy); }
+.when-sum:empty { display: none; }
 .err:empty { display: none; }
 .err, .err-text { font-size: 13px; color: var(--danger); font-weight: 700; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -55,7 +57,7 @@
 /* 地図の部品（Leaflet）を暗い画面に合わせる */
 .map-box.leaflet-container { background: #0a1322; }
 .leaflet-container { font-family: var(--ui); }
-.leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.82) contrast(.92) saturate(.7); } /* 地図の画像だけを暗い色にする（印・線・ボタンには掛けない） */
+.leaflet-tile-pane { opacity: .5; } /* 地図の画像を暗い背景に沈めて暗い色にする。色の反転（filter）はメモリを多く使い、iPhoneでアプリが落ちる原因になるので使わない */
 .map-note { position: absolute; left: 10px; right: 10px; bottom: 28px; z-index: 1000; padding: 8px 10px; border-radius: 10px; font-size: 12px; color: var(--am); background: rgba(5,7,13,.92); border: 1px solid var(--am); }
 .leaflet-control-attribution { background: rgba(5,7,13,.7) !important; color: var(--muted) !important; font-size: 10px; }
 .leaflet-control-attribution a { color: var(--cy) !important; }

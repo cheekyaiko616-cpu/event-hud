@@ -53,6 +53,12 @@ export async function createMap(el, { center = MAP.home, zoom = MAP.homeZoom, la
   el.append(note);
   layer.on('tileload', () => { loaded++; note.hidden = true; });
   layer.on('tileerror', () => { failed++; if (!loaded && failed >= 4) note.hidden = false; });
+  // 他のアプリへ移っている間は地図の画像を手放す（iPhone がメモリ不足でこのアプリを落とし、戻ると白い画面になるのを防ぐ）
+  const onVis = () => {
+    if (document.visibilityState === 'hidden') layer.remove();
+    else if (!map.hasLayer(layer)) { layer.addTo(map); map.invalidateSize(); }
+  };
+  document.addEventListener('visibilitychange', onVis);
   let routeLayer = null;
   return {
     map,
@@ -71,7 +77,7 @@ export async function createMap(el, { center = MAP.home, zoom = MAP.homeZoom, la
       if (points.length === 1) map.setView([points[0].lat, points[0].lon], 13);
       else if (points.length) map.fitBounds(points.map((p) => [p.lat, p.lon]), { padding: [30, 30], maxZoom: 12 });
     },
-    destroy() { map.off(); map.remove(); }
+    destroy() { document.removeEventListener('visibilitychange', onVis); map.off(); map.remove(); }
   };
 }
 

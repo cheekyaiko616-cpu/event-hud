@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Event HUD">
 <meta name="description" content="イベントの日程・現地の天気・地図・カレンダー追加をまとめて見るアプリ">
 <title>Event HUD</title>
+<!-- 見た目のファイルより先に背景を暗くしておく（読み込み途中や、戻ったときに白い画面が見えないように） -->
+<style>html,body{background:#05070d;color:#e8f1ff;margin:0}.boot{padding:40vh 16px 0;text-align:center;font:600 13px ui-monospace,Menlo,monospace;letter-spacing:.2em;color:#2ee6ff}</style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon.svg">
 <link rel="stylesheet" href="css/tokens.css">
@@ -27,7 +29,7 @@
   <button class="icon-btn" id="dataBtn" type="button" aria-label="データの読み込み"><span aria-hidden="true">⛁</span></button>
   <button class="icon-btn" id="helpBtn" type="button" aria-label="使い方"><span aria-hidden="true">?</span></button>
 </header>
-<main id="view" tabindex="-1"></main>
+<main id="view" tabindex="-1"><p class="boot" role="status">EVENT HUD 読み込み中…</p></main>
 <nav class="nav" id="nav" aria-label="画面の切り替え">
   <a href="#/home" data-tab="home"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 8-8 8-8-8z"/><path d="M12 8l3 3-3 3-3-3z"/></svg>ホーム</a>
   <a href="#/list" data-tab="list"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9h16M8 3v4M16 3v4M8 13h3M8 16h6"/></svg>予定</a>

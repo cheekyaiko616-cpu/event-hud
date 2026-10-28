@@ -1,20 +1,22 @@
-// 予定の詳細の「行き方」：電車・バス（乗り換え案内）と車（経路）。国内の会場だけ。
-// 乗り換えの結果は Yahoo!乗換案内・Googleマップ・Appleマップの画面で見る（無料で全国の時刻表を引ける手段がそれしか無いため）。
+// 予定の詳細の「行き方」：電車・バス（Yahoo!乗換案内）と車（経路の確認と Yahoo!カーナビ）。国内の会場だけ。
+// 外のアプリ・サイトは、必ず普通のリンク（<a>）で開く。window.open は iPhone のホーム画面アプリで
+// 戻ったときに白い画面になる不具合があるため使わない。
 import { esc, setHtml } from '../../util/dom.js';
 import { readStore, writeStore } from '../../util/cache.js';
 import { isDomestic, walkMinutes } from '../../util/geo-math.js';
-import { KEYS, TRANSIT } from '../../config.js';
+import { KEYS, TRANSIT, CARNAVI } from '../../config.js';
 import { segmented, bindSegmented } from '../components/segmented.js';
 import { currentPosition } from '../../services/location.js';
 import { nearbyStations, cleanStationName } from '../../services/stations.js';
 import { drivingRoute, formatDuration, formatKm } from '../../services/route.js';
-import { yahooTransitUrl, googleTransitUrl, appleTransitUrl } from '../../services/transit-links.js';
-import { appleMapsUrl } from '../../services/maps-link.js';
+import { yahooTransitUrl, googleTransitUrl, appleTransitUrl, yahooCarNaviUrl, whenLabel } from '../../services/transit-links.js';
 
 let mode = 'transit'; // 画面を移っても、選んだ行き方は覚えておく
 let when = 'arrive';
 
 const fmtKm = (km) => (km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{2}:\d{2}$/;
 
 /** 駅から会場までの案内文。 */
 function lastMile(km) {
@@ -45,12 +47,17 @@ export function accessHtml({ e, pos, today }) {
     + `<div class="field"><label for="tTime">時刻</label><input id="tTime" name="time" type="time" value="${TRANSIT.defaultTime}"></div></div>`
     + segmented({ name: 'when', label: '時刻の意味', options: [{ value: 'arrive', label: 'この時刻に到着' }, { value: 'depart', label: 'この時刻に出発' }], value: when })
     + '<p class="err" id="tErr" role="alert"></p>'
-    + '<button class="btn primary wide" type="submit">Yahoo!乗換案内で検索</button>'
+    + '<p class="when-sum" id="tSum" aria-live="polite"></p>'
+    + '<a class="btn primary wide" data-link="yahoo" target="_blank" rel="noopener" href="#">Yahoo!乗換案内で検索</a>'
+    + '<p class="wx-note">日時はYahoo!乗換案内に引き継ぎます。Yahoo!乗換案内アプリが開いて日時が違うときは、アプリの検索画面で日時を合わせてください（アプリ側が外からの日時指定に対応していないことがあります）。</p>'
     + '<div class="btn-row"><a class="btn" data-link="google" target="_blank" rel="noopener" href="#">Googleマップで<br>会場まで</a><a class="btn" data-link="apple" target="_blank" rel="noopener" href="#">Appleマップで<br>会場まで</a></div>'
-    + '<p class="wx-note">結果は各サービスの画面で開きます。Googleマップ・Appleマップは駅から会場までのバスや徒歩も含みます。</p>'
+    + '<p class="wx-note">Googleマップ・Appleマップは駅から会場までのバスや徒歩も含みます（日時は各アプリで指定）。</p>'
     + '</form>'
-    + `<div data-panel="car"${mode === 'car' ? '' : ' hidden'}><div class="btn-col"><button class="btn primary wide" type="button" data-act="route">現在地から車の経路を見る</button>`
-    + `<a class="btn wide" data-link="drive" target="_blank" rel="noopener" href="#">マップで案内開始</a></div><div class="route-out" style="margin-top:10px"></div></div>`
+    + `<div data-panel="car"${mode === 'car' ? '' : ' hidden'}><div class="btn-col">`
+    + '<a class="btn primary wide" data-link="carnavi" href="#">Yahoo!カーナビで案内開始</a>'
+    + '<button class="btn wide" type="button" data-act="route">現在地からの経路をこの画面で見る</button></div>'
+    + `<p class="wx-note" style="margin-top:8px">ナビには無料の「Yahoo!カーナビ」アプリが必要です。<a href="${CARNAVI.appStore}" target="_blank" rel="noopener">App Storeで入手</a></p>`
+    + '<div class="route-out" style="margin-top:10px"></div></div>'
     + '</div>';
 }
 
@@ -66,13 +73,31 @@ export function bindAccess(root, { e, getPos, getBox, signal }) {
   const $ = (id) => card.querySelector(id);
   const val = (id) => cleanStationName($(id).value);
 
+  /** 入力の今の内容。日時が正しくなければ空のまま返す（呼ぶ側で確かめる）。 */
+  const current = () => ({ from: val('#tFrom'), to: val('#tTo'), date: $('#tDate').value, time: $('#tTime').value, arrive: when === 'arrive' });
+
+  function validate(q) {
+    if (!q.from) return ['出発駅を入力してください。', '#tFrom'];
+    if (!q.to) return ['到着駅を入力してください。', '#tTo'];
+    if (q.from === q.to) return ['出発駅と到着駅が同じです。', '#tFrom'];
+    if (!DATE_RE.test(q.date)) return ['日付を選んでください。', '#tDate'];
+    if (!TIME_RE.test(q.time)) return ['時刻を選んでください。', '#tTime'];
+    return null;
+  }
+
+  /** リンク先を、今の入力に合わせて作り直す（日時・駅が変わるたびに呼ぶ）。 */
   function refreshLinks() {
     const pos = getPos();
     if (!pos) return;
-    const from = val('#tFrom');
-    card.querySelector('[data-link="google"]').href = googleTransitUrl({ from, dest: pos });
-    card.querySelector('[data-link="apple"]').href = appleTransitUrl({ from, dest: pos, label: e.place });
-    card.querySelector('[data-link="drive"]').href = appleMapsUrl(pos, e.place, { directions: true });
+    const q = current();
+    const ok = !validate(q);
+    const y = card.querySelector('[data-link="yahoo"]');
+    y.href = ok ? yahooTransitUrl(q) : '#';
+    y.setAttribute('aria-describedby', 'tSum');
+    $('#tSum').textContent = ok ? `${q.from} → ${q.to}　${whenLabel(q)} で検索します` : '';
+    card.querySelector('[data-link="google"]').href = googleTransitUrl({ from: q.from, dest: pos });
+    card.querySelector('[data-link="apple"]').href = appleTransitUrl({ from: q.from, dest: pos, label: e.place });
+    card.querySelector('[data-link="carnavi"]').href = yahooCarNaviUrl({ dest: pos, label: pos.name || e.place });
   }
 
   /** 会場の到着駅が一覧に無いとき：近くの駅を調べて入れる。 */
@@ -86,6 +111,7 @@ export function bindAccess(root, { e, getPos, getBox, signal }) {
       if (!list.length) { setHtml($('#tToHint'), '近くに駅が見つかりませんでした。到着駅を入力するか、Googleマップで会場まで調べてください。'); return; }
       if (!$('#tTo').value) $('#tTo').value = list[0].name;
       setHtml($('#tToHint'), esc(lastMile(list[0].km)) + chips(list, 'to'));
+      refreshLinks();
     } catch {
       if (!signal.aborted) setHtml($('#tToHint'), '近くの駅を調べられませんでした。到着駅を入力してください。');
     }
@@ -106,6 +132,7 @@ export function bindAccess(root, { e, getPos, getBox, signal }) {
       if (!list.length) throw new Error('近くに駅が見つかりませんでした。出発駅を入力してください。');
       $('#tFrom').value = list[0].name;
       setHtml($('#tFromHint'), `現在地から約${fmtKm(list[0].km)}（徒歩${walkMinutes(list[0].km)}分目安）${chips(list, 'from')}`);
+      $('#tErr').textContent = '';
       refreshLinks();
     } catch (err) {
       if (!signal.aborted) setHtml($('#tFromHint'), `<span class="err-text" role="alert">${esc(err.message)}</span>`);
@@ -138,26 +165,33 @@ export function bindAccess(root, { e, getPos, getBox, signal }) {
     }
   }
 
-  function search(ev) {
-    ev.preventDefault();
-    const from = val('#tFrom'), to = val('#tTo');
-    const date = $('#tDate').value, time = $('#tTime').value;
-    const err = !from ? '出発駅を入力してください。' : !to ? '到着駅を入力してください。' : from === to ? '出発駅と到着駅が同じです。'
-      : !/^\d{4}-\d{2}-\d{2}$/.test(date) ? '日付を選んでください。' : !/^\d{2}:\d{2}$/.test(time) ? '時刻を選んでください。' : '';
-    $('#tErr').textContent = err;
-    if (err) { (from ? (to ? $('#tDate') : $('#tTo')) : $('#tFrom')).focus(); return; }
-    writeStore(KEYS.origin, from);
-    window.open(yahooTransitUrl({ from, to, date, time, arrive: when === 'arrive' }), '_blank', 'noopener');
+  /** 「Yahoo!乗換案内で検索」：押した瞬間の入力でリンク先を作り直してから開く。足りなければ開かない。 */
+  function onYahoo(ev, a) {
+    refreshLinks();
+    const q = current();
+    const bad = validate(q);
+    $('#tErr').textContent = bad ? bad[0] : '';
+    if (bad) { ev.preventDefault(); $(bad[1]).focus(); return; }
+    a.href = yahooTransitUrl(q);
+    writeStore(KEYS.origin, q.from);
   }
 
   const onClick = (ev) => {
     const pick = ev.target.closest('[data-pick]');
-    if (pick) { $(pick.dataset.pick === 'from' ? '#tFrom' : '#tTo').value = pick.dataset.name; refreshLinks(); return; }
+    if (pick) { $(pick.dataset.pick === 'from' ? '#tFrom' : '#tTo').value = pick.dataset.name; $('#tErr').textContent = ''; refreshLinks(); return; }
+    const link = ev.target.closest('[data-link]');
+    if (link) {
+      if (link.dataset.link === 'yahoo') onYahoo(ev, link);
+      else refreshLinks(); // 念のため、押した瞬間の内容にそろえる
+      return;
+    }
     const act = ev.target.closest('[data-act]')?.dataset.act;
     if (act === 'near-me') nearMe(ev.target.closest('button'));
     if (act === 'route') showRoute(ev.target.closest('button'));
   };
+  // 日付・時刻の入力は、iPhone では「change」しか来ないことがあるので両方で受ける
   const onInput = () => { $('#tErr').textContent = ''; refreshLinks(); };
+  const onSubmit = (ev) => { ev.preventDefault(); card.querySelector('[data-link="yahoo"]').click(); }; // 入力中に「開く」を押したとき
   const offMode = bindSegmented(card, 'mode', (v) => {
     mode = v;
     card.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== v; });
@@ -166,11 +200,19 @@ export function bindAccess(root, { e, getPos, getBox, signal }) {
   const offWhen = bindSegmented(card, 'when', (v) => {
     when = v;
     card.querySelectorAll('[data-seg="when"] button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)));
+    refreshLinks();
   });
   card.addEventListener('click', onClick);
-  f.addEventListener('submit', search);
   f.addEventListener('input', onInput);
+  f.addEventListener('change', onInput);
+  f.addEventListener('submit', onSubmit);
   refreshLinks();
   fillArrival();
-  return () => { offMode(); offWhen(); card.removeEventListener('click', onClick); f.removeEventListener('submit', search); f.removeEventListener('input', onInput); };
+  return () => {
+    offMode(); offWhen();
+    card.removeEventListener('click', onClick);
+    f.removeEventListener('input', onInput);
+    f.removeEventListener('change', onInput);
+    f.removeEventListener('submit', onSubmit);
+  };
 }

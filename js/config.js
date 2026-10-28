@@ -65,3 +65,9 @@ export const TRANSIT = {
   walkKmPerMin: 0.08,       // 歩く速さの目安（分速80m）
   farKm: 2                  // 駅から会場がこれより遠いと「バス・タクシーなど」と案内する
 };
+
+// 車のナビは Yahoo!カーナビ（無料アプリ）に引き継ぐ。公式に公開されている呼び出し方を使う
+export const CARNAVI = {
+  scheme: 'yjcarnavi://navi/select',
+  appStore: 'https://apps.apple.com/jp/app/id890808217'
+};

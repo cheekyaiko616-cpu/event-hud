@@ -99,13 +99,36 @@ function start() {
   });
 
   watchToday();
-  startRouter({ root: $('#view'), nav: $('#nav'), appName: APP.name });
+  const router = startRouter({ root: $('#view'), nav: $('#nav'), appName: APP.name });
   renderChrome(getState());
   refresh();
+  watchResume(router);
+  startServiceWorker();
+}
 
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* なくても動く */ });
-  }
+/**
+ * 他のアプリから戻ったとき：画面が空になっていたら描き直す。
+ * （iPhone は裏にいる間にアプリの中身を捨てることがある。戻ってきたら必ず中身があるようにする）
+ */
+function watchResume(router) {
+  const check = () => { if (document.visibilityState === 'visible') router.repair(); };
+  addEventListener('pageshow', check);
+  document.addEventListener('visibilitychange', check);
+  addEventListener('focus', check);
+}
+
+/**
+ * オフライン用の仕組み（sw.js）。新しい版に切り替わったら、新旧のプログラムが混ざらないよう、すぐに読み込み直す。
+ * （画面の場所は URL の # に入っているので、読み込み直しても同じ画面に戻る）
+ */
+function startServiceWorker() {
+  if (!('serviceWorker' in navigator) || !isSecureContext) return;
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  const reload = () => { if (!reloading) { reloading = true; location.reload(); } };
+  navigator.serviceWorker.addEventListener('message', (ev) => { if (ev.data && ev.data.type === 'reload') reload(); });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reload(); }); // 初めて入ったときは、そのままでよい
+  navigator.serviceWorker.register('sw.js').catch(() => { /* なくても動く */ });
 }
 
 start();

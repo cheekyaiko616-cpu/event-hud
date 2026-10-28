@@ -1,6 +1,6 @@
 // 乗り換え案内の画面を開くためのURLを作る（通信しない）。
 // 結果は Yahoo!乗換案内・Googleマップ・Appleマップの画面で見る（どれも全国の鉄道に対応）。
-import { TRANSIT } from '../config.js';
+import { TRANSIT, CARNAVI } from '../config.js';
 
 /**
  * Yahoo!乗換案内の検索結果のURL。
@@ -32,4 +32,21 @@ export function appleTransitUrl({ from, dest, label }) {
   if (from) q.set('saddr', `${from}駅`);
   if (label) q.set('q', label);
   return `${TRANSIT.apple}?${q}`;
+}
+
+/**
+ * Yahoo!カーナビで、現在地から会場までの案内を始める（アプリが必要）。
+ * 公式の呼び出し方：point=current（現在地）→ point=緯度,経度,名前。緯度経度は小数7桁まで。
+ */
+export function yahooCarNaviUrl({ dest, label }) {
+  const name = String(label || '目的地').replace(/,/g, ' ');
+  return `${CARNAVI.scheme}?point=current&point=${dest.lat.toFixed(7)},${dest.lon.toFixed(7)},${encodeURIComponent(name)}`;
+}
+
+/** 日時の読み上げ・表示用：11月14日(土) 9:05 到着 */
+export function whenLabel({ date, time, arrive }) {
+  const [y, m, d] = date.split('-').map(Number);
+  const wd = '日月火水木金土'[new Date(y, m - 1, d).getDay()];
+  const [hh, mm] = time.split(':');
+  return `${m}月${d}日(${wd}) ${+hh}:${mm} ${arrive ? '到着' : '出発'}`;
 }
