@@ -84,7 +84,7 @@ function accessHtml({ e, pos, today }) {
  */
 export function createEventSheet({ getState, onClose }) {
   const dlg = document.createElement('dialog');
-  dlg.className = 'sheet';
+  dlg.className = 'sheet event';
   dlg.setAttribute('aria-labelledby', 'sheetTitle');
   dlg.innerHTML = `<div class="sheet-head"><h2 id="sheetTitle" tabindex="-1"></h2><button class="sheet-close" type="button" data-act="close" aria-label="閉じる">${SVG_CLOSE}</button></div><div class="sheet-body" id="sheetBody"></div>`;
   document.body.append(dlg);

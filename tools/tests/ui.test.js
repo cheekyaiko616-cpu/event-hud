@@ -156,12 +156,57 @@ const nearestName = (pos, km) => { const c = MINI.filter((s) => Math.abs(s.lat -
   await p.click('.section-title a'); await p.waitForTimeout(300);
   check('ホーム：「すべて見る」で予定へ', location_hash(await p.url()) === '#/list');
 
+  /* ========== 4b. 予定のタブ：固定とスワイプ（Event list と同じ） ========== */
+  section('予定のタブ：固定と左右スワイプ');
+  await p.evaluate(() => { location.hash = '#/list'; }); await p.waitForSelector('.tab'); await p.waitForTimeout(300);
+  const cdp = await ctx.newCDPSession(p);
+  const swipe = async (x1, x2, { y = 520, hold = false, wait = 450 } = {}) => {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x1, y }] });
+    for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x1 + (x2 - x1) * i / 10, y: y + i }] }); await p.waitForTimeout(16); }
+    if (hold) return;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await p.waitForTimeout(wait);
+  };
+  const cur = () => p.evaluate(() => document.querySelector('.tab[aria-selected="true"]').dataset.tab);
+  const pos = () => p.evaluate(() => ({ tabs: Math.round(document.querySelector('.tabs').getBoundingClientRect().top), now: Math.round(document.querySelector('#now').getBoundingClientRect().top), sc: Math.round(document.querySelector('#scroll').getBoundingClientRect().top) }));
+  check('初めは「すべて」', (await cur()) === 'all');
+  await swipe(300, 80); check('左へスワイプ：次のタブへ', (await cur()) === 'テストA', await cur());
+  const rowsA = await p.locator('#scroll .row').count();
+  check('切り替わった先は、その種類だけの一覧', rowsA === up.filter((e) => e.tabName === 'テストA').length, String(rowsA));
+  await swipe(300, 80); check('もう一度左へ：さらに次のタブ', (await cur()) === 'テストB');
+  await swipe(80, 300); check('右へスワイプ：前のタブへ', (await cur()) === 'テストA');
+  await swipe(80, 300); await swipe(80, 300); check('先頭より前へは進まない', (await cur()) === 'all');
+  await swipe(300, 270); check('少しだけ動かして離すと、元のタブのまま', (await cur()) === 'all');
+  check('動かし終わったあと、仮の画面は残らない', (await p.locator('.swipe-ghost').count()) === 0 && (await p.evaluate(() => document.querySelector('#scroll').style.transform)) === '');
+  await swipe(300, 80, { hold: true }); await p.waitForTimeout(80);
+  check('指を動かしている間は、隣の画面が続いて見える', (await p.locator('.swipe-ghost').count()) === 1);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await p.waitForTimeout(450);
+  check('離すと切り替わる', (await cur()) === 'テストA');
+  await swipe(80, 300);
+  await p.evaluate(() => { document.querySelector('#scroll').scrollTop = 600; }); await p.waitForTimeout(100);
+  const fixed = await pos();
+  check('一覧をスクロールしても、タブ・帯は動かない', fixed.tabs === (await pos()).tabs && (await p.evaluate(() => document.querySelector('#now').getBoundingClientRect().height)) > 0 && fixed.now < fixed.sc, JSON.stringify(fixed));
+  await swipe(300, 80);
+  check('切り替えると、一覧は先頭に戻る', (await p.evaluate(() => document.querySelector('#scroll').scrollTop)) === 0);
+  check('縦のスワイプでは切り替わらない', await (async () => { const before = await cur(); await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 700 }] }); for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 200 + i, y: 700 - i * 20 }] }); await p.waitForTimeout(16); } await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await p.waitForTimeout(300); return (await cur()) === before; })());
+  check('画面の左端からの動きでは切り替わらない（ブラウザの戻る用）', await (async () => { const before = await cur(); await swipe(10, 300); return (await cur()) === before; })());
+  await p.click('.tab[data-tab="all"]'); await p.waitForTimeout(300);
+  check('タブを押しても切り替わる', (await cur()) === 'all');
+  await p.click('[data-seg="view"] button:has-text("過去")'); await p.waitForTimeout(200);
+  check('過去：固定の帯は出ない', (await p.locator('#now .strip').count()) === 0);
+  await swipe(300, 80); check('過去のまま、スワイプで隣のタブへ', (await cur()) === 'テストA' && (await p.locator('[data-seg="view"] button[aria-pressed="true"]').innerText()) === '過去');
+  await p.click('[data-seg="view"] button:has-text("これから")'); await p.waitForTimeout(200);
+  await p.click('.tab[data-tab="all"]'); await p.waitForTimeout(300);
+  // 「すべて」が左に固定されるか：タブが多いと横に動く
+  const stick = await p.evaluate(() => { const a = document.querySelector('.tab-all'); return { pos: getComputedStyle(a).position, left: getComputedStyle(a).left }; });
+  check('「すべて」のタブは左に固定', stick.pos === 'sticky', JSON.stringify(stick));
+  check('スクリプトのエラーなし（スワイプ）', p.errs.length === 0, p.errs.join('|'));
+
   /* ========== 5. 詳細の画面の開き閉じ ========== */
   section('詳細の画面');
   const firstRow = p.locator('.month .row a').first();
   await p.evaluate(() => { document.querySelector('.scroll').scrollTop = 150; });
-  const sc0 = await p.evaluate(() => document.querySelector('.scroll').scrollTop);
   await firstRow.click(); await p.waitForSelector('dialog.sheet[open] .panel');
+  const sc0 = await p.evaluate(() => document.querySelector('.scroll').scrollTop); // 押したときの位置（押すために動くことがある）
   check('行を押すと詳細が下から開く（URLにも入る）', /^#\/list\/./.test(location_hash(await p.url())));
   await p.click('dialog.sheet[open] [data-act="close"]'); await p.waitForTimeout(150);
   check('×で閉じる：URLが戻り、一覧の位置はそのまま', location_hash(await p.url()) === '#/list' && !(await p.locator('dialog.sheet[open]').count()) && Math.round(await p.evaluate(() => document.querySelector('.scroll').scrollTop)) === Math.round(sc0));

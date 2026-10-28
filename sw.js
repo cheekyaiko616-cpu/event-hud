@@ -2,7 +2,7 @@
 // 新しい版は、sw.js が変わったときにまとめて入れ替わる。切り替わったら、画面側（js/main.js）が読み込み直す。
 // 地図の画像・天気・日程はここでは保存しない（容量を使いすぎないため。日程はアプリ側で覚えている）。
 // ファイルを足したり消したりしたら、ASSETS を直して CACHE の番号を1つ上げる。
-const CACHE = 'event-hud-v4';
+const CACHE = 'event-hud-v5';
 const ASSETS = [
   './',
   'index.html',
@@ -34,6 +34,7 @@ const ASSETS = [
   'js/ui/components/status.js',
   'js/ui/components/strips.js',
   'js/ui/components/tabs-bar.js',
+  'js/ui/tab-swipe.js',
   'js/ui/components/toast.js',
   'js/ui/components/weather.js',
   'js/ui/data-sheet.js',

@@ -1,6 +1,7 @@
 /* 予定の詳細（下から出る画面）と、データの画面。 */
 dialog.sheet { margin: auto auto 0; width: 100%; max-width: 640px; max-height: 92dvh; padding: 0; border: 1px solid var(--line); border-bottom: 0; border-radius: 20px 20px 0 0; background: var(--bg); color: var(--fg); overflow: hidden; }
 dialog.sheet[open] { display: flex; flex-direction: column; }
+dialog.sheet.event { height: 92dvh; } /* 中身が読み込まれても、開いた画面の大きさが変わらない */
 dialog.sheet::backdrop { background: rgba(0, 0, 0, .65); }
 .sheet-head { flex: none; display: flex; align-items: flex-start; gap: 8px; padding: 12px 8px 10px var(--gutter); border-bottom: 1px solid var(--line); }
 .sheet-head h2 { flex: 1; min-width: 0; padding-top: 10px; font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; outline: none; }
@@ -28,6 +29,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .65); }
 /* 行き方 */
 .tform { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .links { margin-top: 14px; }
+.links .btn { padding-inline: 8px; white-space: nowrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips:empty { display: none; }
 .pick { min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-size: 15px; font-weight: 700; }
