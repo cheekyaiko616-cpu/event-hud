@@ -1,0 +1,73 @@
+/* 画面全体の枠：背景・上の帯・下のボタン・共通のボタン。 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--ui); line-height: 1.5;
+  -webkit-font-smoothing: antialiased; min-height: 100dvh; overflow-x: hidden;
+}
+/* 背景の光と格子。1枚の固定レイヤーにして、スクロールのたびに描き直さない */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; contain: strict;
+  background:
+    radial-gradient(120% 50% at 85% -10%, rgba(46, 230, 255, .16), transparent 60%),
+    radial-gradient(80% 40% at 0% 25%, rgba(255, 92, 192, .10), transparent 60%),
+    linear-gradient(rgba(120, 200, 255, .05) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgba(120, 200, 255, .05) 1px, transparent 1px) 0 0 / 28px 28px;
+}
+a { color: inherit; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--cy); outline-offset: 2px; border-radius: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+.skip { position: absolute; left: 8px; top: -60px; background: var(--cy); color: var(--on-cy); padding: 8px 12px; border-radius: 8px; z-index: 50; }
+.skip:focus { top: calc(8px + var(--safe-t)); }
+
+/* 上の帯 */
+.top {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px;
+  padding: calc(6px + var(--safe-t)) var(--gutter) 6px;
+  background: rgba(5, 7, 13, .9); border-bottom: 1px solid var(--edge);
+}
+.brand { font: 700 13px var(--mono); letter-spacing: .24em; color: var(--cy); text-shadow: var(--glow); }
+.sync { margin-left: auto; font: 500 11px var(--mono); color: var(--muted); text-align: right; line-height: 1.3; }
+.sync.warn { color: var(--am); }
+.icon-btn { width: var(--tap); height: var(--tap); display: grid; place-items: center; border-radius: 12px; font-size: 18px; color: var(--cy); }
+.icon-btn:active { background: rgba(46, 230, 255, .12); }
+.icon-btn[aria-busy="true"] span { animation: spin 1s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 本文 */
+main { padding: 8px var(--gutter) calc(var(--nav-h) + var(--safe-b) + 24px); max-width: 640px; margin: 0 auto; }
+.view-title { font-size: 20px; font-weight: 700; margin: 8px 0 12px; outline: none; }
+
+/* 下のボタン */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, 1fr);
+  padding-bottom: var(--safe-b); background: rgba(5, 7, 13, .94); border-top: 1px solid var(--edge);
+}
+.nav a {
+  min-height: var(--nav-h); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: 11px; letter-spacing: .04em; color: var(--muted); text-decoration: none;
+}
+.nav a { position: relative; }
+.nav svg { display: block; }
+.nav a[aria-current="page"] { color: var(--cy); text-shadow: var(--glow); }
+.nav .badge { position: absolute; top: 8px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--mg); color: #fff; font: 700 10px/16px var(--mono); text-shadow: none; }
+
+/* 共通のボタン */
+.btn {
+  min-height: var(--tap); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px;
+  border-radius: 12px; border: 1px solid var(--cy); color: var(--cy); background: rgba(46, 230, 255, .08);
+  font-weight: 700; font-size: 14px; text-decoration: none; text-align: center;
+}
+.btn.primary { background: var(--cy); color: var(--on-cy); box-shadow: var(--glow); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: default; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn-row > :only-child { grid-column: 1 / -1; }
+.btn-col { display: grid; gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

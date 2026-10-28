@@ -1,0 +1,30 @@
+/* 色・文字・間隔の定義だけを置く。見た目を変えたいときは、まずここを直す。 */
+:root {
+  color-scheme: dark;
+  --bg: #05070d;
+  --glass: rgba(16, 26, 48, 0.86);   /* 半透明＋ぼかしは重いので、カードは「ほぼ不透明」にして描画を軽くする */
+  --edge: rgba(120, 200, 255, 0.22);
+  --edge-strong: rgba(120, 200, 255, 0.45);
+  --fg: #e8f1ff;
+  --muted: #9aaccb;                  /* 背景に対して文字の見やすさ 4.5:1 以上 */
+  --cy: #2ee6ff;
+  --on-cy: #001018;
+  --mg: #ff5cc0;
+  --am: #ffb84d;
+  --danger: #ff7a7a;
+  --glow: 0 0 18px rgba(46, 230, 255, 0.35);
+
+  /* タブ（イベントの種類）の色。出てきた順に 1〜8 を割り当てる */
+  --t1: #ffb84d; --t2: #b6ff3c; --t3: #ff5cc0; --t4: #8fa8ff;
+  --t5: #2ee6ff; --t6: #ffd84d; --t7: #c79bff; --t8: #a9b6c7;
+
+  --ui: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --gutter: 16px;
+  --radius: 16px;
+  --tap: 44px;                       /* 指で押しやすい最小の大きさ */
+  --nav-h: 64px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
