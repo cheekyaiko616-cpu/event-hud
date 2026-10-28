@@ -6,7 +6,7 @@
 import pathlib, re, subprocess, sys
 root = pathlib.Path(__file__).resolve().parent.parent
 sw = (root / 'sw.js').read_text(encoding='utf-8')
-assets = set(re.findall(r"'([^']+\.(?:js|css|html|svg|webmanifest))'", sw.split('self.addEventListener')[0]))
+assets = set(re.findall(r"'([^']+\.(?:js|css|html|svg|webmanifest|json))'", sw.split('self.addEventListener')[0]))
 ng = []
 for p in list(root.glob('js/**/*.js')) + list(root.glob('css/*.css')):
     rel = p.relative_to(root).as_posix()

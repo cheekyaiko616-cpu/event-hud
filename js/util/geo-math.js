@@ -1,6 +1,4 @@
-// 位置の計算（通信しない）。距離・国内かどうか・歩く時間の目安。
-import { TRANSIT } from '../config.js';
-
+// 位置の計算（通信しない）。距離と、日本国内かどうか。
 /** 2点の距離（km）。数km〜数百kmの目安には十分な近似。 */
 export function distanceKm(a, b) {
   const r = Math.PI / 180;
@@ -26,6 +24,3 @@ export function isDomestic(pos) {
   if (!pos || !Number.isFinite(pos.lat) || !Number.isFinite(pos.lon)) return false;
   return JAPAN.some(([s, n, w, e]) => pos.lat >= s && pos.lat <= n && pos.lon >= w && pos.lon <= e);
 }
-
-/** 歩く時間の目安（分）。 */
-export const walkMinutes = (km) => Math.max(1, Math.round(km / TRANSIT.walkKmPerMin));

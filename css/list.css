@@ -1,0 +1,57 @@
+/* 予定の一覧（Event list の一覧と同じ作り）：種類のタブ・開催中/次の予定の帯・月の帯・予定の行。 */
+/* タブ（フォルダ形） */
+.tabs { flex: none; overflow-x: auto; scrollbar-width: none; background: var(--bg); }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs-in { display: flex; align-items: flex-end; gap: 4px; min-width: 100%; width: max-content; padding: 8px var(--gutter) 0; border-bottom: 1px solid var(--line); }
+.tab { position: relative; flex: none; min-height: 46px; margin-bottom: -1px; padding: 0 14px; background: var(--bg); border: 1px solid var(--line); border-top: 3px solid color-mix(in srgb, var(--c) 45%, var(--line)); border-radius: 10px 10px 0 0; color: var(--muted); font-size: 14px; font-weight: 700; white-space: nowrap; }
+.tab[aria-selected="true"] { background: var(--surface); border-top-color: var(--c); border-bottom-color: var(--surface); color: var(--fg); }
+
+/* これから／過去 */
+.switch { padding: 10px var(--gutter) 0; }
+
+/* 開催中・次の予定・申込締切の帯 */
+.strips { display: grid; gap: 8px; padding: 10px var(--gutter) 0; }
+.strip { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 12px; text-align: left; text-decoration: none; background: color-mix(in srgb, var(--c) 10%, var(--surface)); border: 1px solid var(--line); border-left: 5px solid var(--c); border-radius: 10px; }
+.strip-pill { flex: none; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--c); color: var(--c); font-size: 12px; font-weight: 700; }
+.strip.live .strip-pill, .strip.soon .strip-pill { background: var(--c); color: #0b1020; }
+.strip-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.strip-end { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.strip.soon .strip-end { color: var(--fg); font-weight: 700; }
+
+/* 月の帯：見ている間は上に固定され、次の月に入ると入れ替わる */
+.month { margin-top: 14px; }
+.band { position: sticky; top: 0; z-index: 2; background: hsl(var(--h) var(--band-bg-s) var(--band-bg-l)); color: hsl(var(--h) var(--band-fg-s) var(--band-fg-l)); }
+.band-in { display: flex; align-items: baseline; gap: 4px; padding-block: 8px; }
+.band-m, .band-y { font: 700 32px/1 var(--num); font-variant-numeric: tabular-nums; }
+.band-y { margin-right: 10px; }
+.band-u { font-size: 15px; font-weight: 700; }
+.band-r { margin-left: auto; font-size: 14px; font-weight: 500; }
+.band.tbd { background: var(--surface); color: var(--muted); border-block: 1px solid var(--line); }
+.band-t { font-size: 15px; font-weight: 700; }
+
+/* 予定の行 */
+.rows { list-style: none; }
+.row { border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row-btn { display: grid; grid-template-columns: 56px minmax(0, 1fr) 16px; gap: 12px; align-items: start; width: 100%; padding: 14px 0; color: inherit; text-decoration: none; text-align: left; }
+.row-btn:active { background: var(--accent-soft); }
+.when { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.when .d { font: 700 28px/1 var(--num); font-variant-numeric: tabular-nums; }
+.when .d.multi { font-size: 22px; }
+.when .w { font-size: 12px; line-height: 1.2; color: var(--muted); }
+.when .pill { margin-top: 4px; padding: 2px 8px; border: 1px dashed var(--muted); border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.what .t { display: block; font-size: 16px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 3px; font-size: 14px; color: var(--muted); }
+.chip { padding: 1px 8px; border: 1px solid currentColor; border-radius: 999px; color: var(--c); font-size: 12px; font-weight: 700; line-height: 1.5; }
+.badge { padding: 1px 7px; border-radius: 5px; background: var(--surface-2); color: var(--fg); font-size: 12px; font-weight: 700; line-height: 1.5; }
+.badge.soon { background: var(--warn); color: #0b1020; }
+.chev { width: 8px; height: 8px; margin-top: 10px; border-right: 2px solid var(--muted); border-top: 2px solid var(--muted); transform: rotate(45deg); }
+.row.past .t { color: var(--muted); }
+.wx { white-space: nowrap; }
+
+.empty { padding: 48px var(--gutter); text-align: center; color: var(--muted); }
+.empty b { display: block; margin-bottom: 4px; color: var(--fg); font-size: 17px; }
+.empty .btn { margin-top: 14px; }
+.list-end { height: 24px; }
+.skel { height: 64px; margin: 10px var(--gutter) 0; border-radius: 12px; background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%) 0 0 / 200% 100%; animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }

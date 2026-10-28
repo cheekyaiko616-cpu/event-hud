@@ -43,18 +43,6 @@ export function longRange(start, end) {
   return `${head}〜${b.getFullYear()}年${b.getMonth() + 1}月${b.getDate()}日(${weekday(end)})`;
 }
 
-/** 「今週末」「今月」「来月」の始まりと終わり（どちらも含む）。 */
-export function periodRange(kind, today) {
-  const t = toDate(today);
-  if (kind === 'weekend') {
-    const dow = t.getDay(); // 日曜は、その日だけを今週末とする
-    const sat = dow === 0 ? -1 : 6 - dow;
-    return { from: dow === 0 ? today : addDays(today, Math.max(0, sat)), to: addDays(today, dow === 0 ? 0 : sat + 1) };
-  }
-  const y = t.getFullYear(), m = t.getMonth() + (kind === 'next' ? 1 : 0);
-  return { from: toIso(new Date(y, m, 1)), to: toIso(new Date(y, m + 1, 0)) };
-}
-
 /** 「あと◯日」の文言。開催中・今日・明日も扱う。 */
 export function countdownLabel(days, ongoing) {
   if (ongoing) return '開催中';

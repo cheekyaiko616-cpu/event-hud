@@ -1,6 +1,7 @@
 // アプリの状態の置き場。書き換えは set だけ。変わったら、登録した画面に知らせる。
 const state = {
   events: [],          // 整えたあとの予定（js/data/events.js の形）
+  tabs: [],            // 種類（タブ）の一覧 { name, color }
   feedStatus: 'idle',  // idle / loading / ready / error
   feedError: '',
   feedAt: '',          // 日程を最後に読めた時刻（ISO）

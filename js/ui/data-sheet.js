@@ -1,25 +1,25 @@
-// 「データ」の画面：日程の読み込み元の説明と、Event list のバックアップの読み込み・取り消し。
+// 「データ」の画面：Event list のバックアップ（自分で入力した予定）の読み込み・取り消し。
 import { esc } from '../util/dom.js';
 import { parseBackup, saveBackup, loadBackup, clearBackup } from '../data/backup.js';
 import { toast } from './components/toast.js';
 
+const SVG_CLOSE = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
 /** @param {{ onChange: () => void }} p  バックアップを読み込んだ・消したときに呼ぶ */
 export function createDataSheet({ onChange }) {
   const dlg = document.createElement('dialog');
-  dlg.className = 'sheet';
+  dlg.className = 'sheet data';
   dlg.setAttribute('aria-labelledby', 'dataTitle');
   document.body.append(dlg);
 
   function render() {
     const b = loadBackup();
-    dlg.innerHTML = `<h2 id="dataTitle">データ</h2>`
-      + '<p>日程は、公開されているイベント一覧（Event list）から毎回読み込みます。ふだんは何もしなくて大丈夫です。</p>'
-      + '<p><b>Event list を使っている方だけ</b>：自分で入力した予定も出したいときに使います。</p>'
-      + `<p>自分で入力した予定を出すには、Event list の「⚙️ → バックアップを書き出す」で保存したファイルを読み込みます。<br>`
-      + (b.events.length ? `<b>読み込み済み：${b.events.length}件</b>${b.savedAt ? `（${esc(b.savedAt.slice(0, 10))} 書き出し分）` : ''}` : '未読み込み') + '</p>'
-      + '<label class="btn primary">バックアップを読み込む<input type="file" accept=".json,application/json" class="sr-only" data-act="file"></label>'
-      + (b.events.length ? '<button class="btn" type="button" data-act="clear">読み込んだ予定を消す</button>' : '')
-      + '<button class="btn" type="button" data-act="close">閉じる</button>';
+    dlg.innerHTML = `<div class="sheet-head"><h2 id="dataTitle">データ</h2><button class="sheet-close" type="button" data-act="close" aria-label="閉じる">${SVG_CLOSE}</button></div>`
+      + '<div class="sheet-body">'
+      + `<p>${b.events.length ? `Event list のバックアップを読み込み済み：${b.events.length}件${b.savedAt ? `（${esc(b.savedAt.slice(0, 10))} 書き出し）` : ''}` : 'Event list で自分で入力した予定は、バックアップのファイルを読み込むと出ます'}</p>`
+      + '<label class="btn solid wide">バックアップを読み込む<input type="file" accept=".json,application/json" data-act="file"></label>'
+      + (b.events.length ? '<button class="btn wide" type="button" data-act="clear">読み込んだ予定を消す</button>' : '')
+      + '</div>';
   }
 
   dlg.addEventListener('change', async (ev) => {
@@ -27,7 +27,7 @@ export function createDataSheet({ onChange }) {
     if (!input || !input.files[0]) return;
     const r = parseBackup(await input.files[0].text());
     if (!r.ok) { toast(r.error); return; }
-    if (!saveBackup(r.events, r.savedAt)) { toast('保存できませんでした（空き容量をご確認ください）'); return; }
+    if (!saveBackup(r.events, r.savedAt)) { toast('保存できませんでした'); return; }
     toast(`${r.events.length}件の予定を読み込みました`);
     render();
     onChange();

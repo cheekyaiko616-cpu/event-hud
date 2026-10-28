@@ -1,23 +1,38 @@
-// 予定1件の行。押すと詳細へ。天気は後から差し込めるように、置き場所（data-wx）だけ用意する。
+// 予定1件の行（Event list の行と同じ作り）。押すと詳細の画面（下から出る）が開く。
 import { esc } from '../../util/dom.js';
-import { md, weekday, countdownLabel } from '../../util/date.js';
-import { DATE_KINDS } from '../../config.js';
+import { toDate, md } from '../../util/date.js';
+import { WEEKDAYS, DATE_KINDS } from '../../config.js';
+import { nextDeadline, lastDay } from '../../data/events.js';
+import { DEADLINE_SOON } from '../../config.js';
 
-export const eventHref = (e) => `#/event/${encodeURIComponent(e.id)}`;
+const wd = (iso) => WEEKDAYS[toDate(iso).getDay()];
 
-/**
- * @param {{ e: object, days: number, ongoing: boolean, deadline?: { kind, date }|null, sub?: string, wx?: boolean }} p
- *   sub: 2行目に出す文字（省略時は場所）、wx: 天気の置き場所を作るか
- */
-export function eventRow({ e, days, ongoing, deadline = null, sub, wx = false }) {
-  const label = countdownLabel(days, ongoing);
-  const line2 = sub ?? (e.place || e.tab);
-  return `<li class="row"><a href="${eventHref(e)}" aria-label="${esc(`${e.title}、${md(e.date)}、${label}`)}">`
-    + `<span class="d"><b>${md(e.date)}</b><small>${weekday(e.date)}${e.end ? '〜' : ''}</small></span>`
-    + `<span class="x"><span class="t">${esc(e.title)}</span><span class="s"><span class="c${e.color}" aria-hidden="true">●</span> ${esc(line2)}</span>`
-    + (deadline ? `<span class="dl">⚑ ${esc(DATE_KINDS[deadline.kind])} ${md(deadline.date)}</span>` : '')
-    + `</span><span class="r">${wx ? `<span class="wx" data-wx="${esc(e.id)}"></span>` : ''}<small>${label}</small></span></a></li>`;
+/** いちばん近い申し込み・期限の印。3日以内は目立たせる。 */
+function deadlineBadge(e, today) {
+  const d = nextDeadline(e, today);
+  if (!d) return '';
+  const tail = d.days === 0 ? '（今日）' : d.days === 1 ? '（明日）' : '';
+  return `<span class="badge${d.days <= DEADLINE_SOON ? ' soon' : ''}">${esc(DATE_KINDS[d.kind])} ${md(d.date)}${tail}</span>`;
 }
 
-/** 行の一覧。空なら何も返さない（呼ぶ側で「空」の表示を出す）。 */
-export const eventRows = (items, opts) => (items.length ? `<ul class="rows card flush">${items.map((x) => eventRow({ ...x, ...opts })).join('')}</ul>` : '');
+/**
+ * @param {{ e: object, today: string, base: 'home'|'list', past?: boolean, showTab?: boolean, wx?: boolean }} p
+ *   showTab: 種類の印を出すか（「すべて」のとき）、wx: 天気の置き場所を作るか
+ */
+export function rowHtml({ e, today, base, past = false, showTab = true, wx = false }) {
+  let when;
+  if (e.date) {
+    const last = lastDay(e);
+    const multi = last !== e.date;
+    const a = toDate(e.date), b = toDate(last);
+    when = `<span class="when"><b class="d${multi ? ' multi' : ''}">${multi ? `${a.getDate()}–${b.getDate()}` : a.getDate()}</b>`
+      + `<span class="w">${multi ? `${wd(e.date)}–${wd(last)}` : wd(e.date)}</span></span>`;
+  } else when = '<span class="when"><b class="pill">未定</b></span>';
+  return `<li class="row${past ? ' past' : ''}"><a class="row-btn" href="#/${base}/${encodeURIComponent(e.id)}">${when}`
+    + `<span class="what"><span class="t">${esc(e.title)}</span><span class="meta">`
+    + (showTab ? `<span class="chip" style="--c:var(--c${e.color})">${esc(e.tab)}</span>` : '')
+    + deadlineBadge(e, today)
+    + (e.place ? `<span>${esc(e.place)}</span>` : '')
+    + (wx ? `<span class="wx" data-wx="${esc(e.id)}"></span>` : '')
+    + '</span></span><span class="chev" aria-hidden="true"></span></a></li>';
+}

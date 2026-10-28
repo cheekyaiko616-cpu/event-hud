@@ -1,30 +1,31 @@
-/* 色・文字・間隔の定義だけを置く。見た目を変えたいときは、まずここを直す。 */
+/* 色・文字の大きさ・間隔の定義だけを置く。見た目を変えたいときは、まずここを直す。 */
 :root {
   color-scheme: dark;
-  --bg: #05070d;
-  --glass: rgba(16, 26, 48, 0.86);   /* 半透明＋ぼかしは重いので、カードは「ほぼ不透明」にして描画を軽くする */
-  --edge: rgba(120, 200, 255, 0.22);
-  --edge-strong: rgba(120, 200, 255, 0.45);
-  --fg: #e8f1ff;
-  --muted: #9aaccb;                  /* 背景に対して文字の見やすさ 4.5:1 以上 */
-  --cy: #2ee6ff;
-  --on-cy: #001018;
-  --mg: #ff5cc0;
-  --am: #ffb84d;
-  --danger: #ff7a7a;
-  --glow: 0 0 18px rgba(46, 230, 255, 0.35);
+  --bg: #0b1020;
+  --surface: #151d36;
+  --surface-2: #1d2747;
+  --line: #2c3961;
+  --fg: #f2f6ff;
+  --muted: #a9b6d6;          /* 背景に対して 7:1 以上の見やすさ */
+  --accent: #4fd8ff;
+  --accent-soft: rgba(79, 216, 255, .14);
+  --on-accent: #04141c;
+  --danger: #ff8d80;
+  --warn: #ffc766;
 
-  /* タブ（イベントの種類）の色。出てきた順に 1〜8 を割り当てる */
-  --t1: #ffb84d; --t2: #b6ff3c; --t3: #ff5cc0; --t4: #8fa8ff;
-  --t5: #2ee6ff; --t6: #ffd84d; --t7: #c79bff; --t8: #a9b6c7;
+  /* 種類（タブ）の色。出てきた順に 1〜8 を割り当てる（Event list と同じ並び） */
+  --c1: #ff9066; --c2: #6fd68a; --c3: #9aa8ff; --c4: #ff8fc0;
+  --c5: #5fd6c9; --c6: #f0b95a; --c7: #b99bff; --c8: #a9b6c7;
+
+  /* 月の帯の濃さ（色相は月ごとに js で決める。Event list と同じ） */
+  --band-bg-s: 30%; --band-bg-l: 19%; --band-fg-s: 70%; --band-fg-l: 80%;
 
   --ui: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --num: ui-rounded, "SF Pro Rounded", "Hiragino Sans", system-ui, sans-serif;
 
   --gutter: 16px;
-  --radius: 16px;
-  --tap: 44px;                       /* 指で押しやすい最小の大きさ */
-  --nav-h: 64px;
-  --safe-b: env(safe-area-inset-bottom, 0px);
+  --radius: 14px;
+  --tap: 48px;               /* 指で押しやすい大きさ */
   --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
 }

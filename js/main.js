@@ -5,17 +5,17 @@ import { todayIso } from './util/date.js';
 import { $ } from './util/dom.js';
 import { cachedFeed, fetchFeed } from './data/feed.js';
 import { loadBackup } from './data/backup.js';
-import { mergeEvents, deadlines } from './data/events.js';
+import { mergeEvents } from './data/events.js';
 import { startRouter } from './ui/router.js';
 import { createDataSheet } from './ui/data-sheet.js';
-import { createHelpSheet } from './ui/help-sheet.js';
+import { createEventSheet } from './ui/event-sheet.js';
 import { toast } from './ui/components/toast.js';
 
 let feedItems = [];
 let refreshing = null;
 
 function rebuild() {
-  set({ events: mergeEvents(feedItems, loadBackup().events) });
+  set(mergeEvents(feedItems, loadBackup().events)); // { events, tabs }
 }
 
 /** 日程を読み込む。端末に残っている分を先に出し、新しければそのまま、古ければ裏で取りに行く。 */
@@ -47,7 +47,7 @@ async function refresh({ force = false } = {}) {
   return refreshing;
 }
 
-/** 上の帯の「◯時◯分 更新」と、期限の数の印。 */
+/** 上の帯の「◯時◯分 更新」。 */
 function renderChrome(s) {
   const el = $('#sync');
   const t = s.feedAt ? new Date(s.feedAt) : null;
@@ -55,11 +55,6 @@ function renderChrome(s) {
   el.textContent = !s.online ? `オフライン${when ? `・${when}時点` : ''}` : s.feedStatus === 'loading' ? '更新中…' : when ? `${when} 更新` : (window.__HUD_SAMPLE__ ? '見本データ' : '');
   el.classList.toggle('warn', !s.online || s.feedStatus === 'error');
   $('#refresh').setAttribute('aria-busy', String(s.feedStatus === 'loading'));
-  const n = deadlines(s.events, s.today, 3).length;
-  const badge = $('#dlBadge');
-  badge.hidden = !n;
-  badge.textContent = n;
-  $('#dlLink').setAttribute('aria-label', n ? `期限、3日以内に${n}件` : '期限');
 }
 
 /** 日付が変わったら（夜0時・アプリに戻ったとき）、「あと◯日」を直す。 */
@@ -85,21 +80,24 @@ function start() {
   addEventListener('offline', () => set({ online: false }));
   subscribe(renderChrome);
 
-  const sheet = createDataSheet({ onChange: rebuild });
+  const data = createDataSheet({ onChange: rebuild });
   $('#refresh').addEventListener('click', () => refresh({ force: true }));
-  const help = createHelpSheet();
-  $('#dataBtn').addEventListener('click', () => sheet.open());
-  $('#helpBtn').addEventListener('click', () => help.open());
+  $('#dataBtn').addEventListener('click', () => data.open());
   // 画面の中の「もう一度読み込む」「データを読み込む」
   $('#view').addEventListener('click', (ev) => {
     const act = ev.target.closest('[data-act]')?.dataset.act;
     if (act === 'refresh') refresh({ force: true });
-    if (act === 'data') sheet.open();
-    if (act === 'help') help.open();
+    if (act === 'data') data.open();
   });
 
   watchToday();
-  const router = startRouter({ root: $('#view'), nav: $('#nav'), appName: APP.name });
+  // 予定の詳細：開いている予定は URL の # に入る。閉じたら、# を元の画面に戻す（履歴は増やさない）
+  const sheet = createEventSheet({
+    getState,
+    onClose: () => { const name = (location.hash.match(/^#\/([^/]*)/) || [, 'home'])[1]; history.replaceState(null, '', `#/${name}`); }
+  });
+  subscribe(() => sheet.update());
+  const router = startRouter({ root: $('#view'), nav: $('#nav'), appName: APP.name, sheet });
   renderChrome(getState());
   refresh();
   watchResume(router);

@@ -1,0 +1,17 @@
+/* ホーム：次の予定までの大きな数字と、これからの予定。 */
+.home-card { display: block; margin: 12px var(--gutter) 0; padding: 18px; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: var(--radius); }
+.home-label { font-size: 14px; font-weight: 700; color: var(--muted); }
+.count { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 6px; }
+.count b { font: 700 76px/1 var(--num); color: var(--accent); font-variant-numeric: tabular-nums; }
+.count span { font-size: 22px; font-weight: 700; }
+.count.word b { font-size: 48px; }
+.home-title { font-size: 20px; font-weight: 700; line-height: 1.4; }
+.home-sub { margin-top: 4px; font-size: 15px; color: var(--muted); }
+.home-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 10px; font-size: 15px; }
+.section-title { display: flex; align-items: baseline; justify-content: space-between; margin: 22px var(--gutter) 4px; font-size: 16px; font-weight: 700; }
+.section-title a { font-size: 14px; color: var(--accent); }
+.home-list { margin-inline: var(--gutter); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding-inline: 12px; }
+.home-list .row-btn { grid-template-columns: 52px minmax(0, 1fr) auto; }
+.home-list .rt { text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.home-list .rt .wx { display: block; font-size: 14px; color: var(--fg); }
+.status-line { margin: 12px var(--gutter) 0; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--warn); color: var(--warn); font-size: 14px; }

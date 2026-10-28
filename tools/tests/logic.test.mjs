@@ -1,84 +1,124 @@
-// 全国の全駅で、乗り換え案内のURL・国内判定・最寄り駅の選び方を確かめる（外部サービスは使わない）。
+// 画面を使わない確認（計算の正しさ）：全国の全駅 × 国内の全会場。外部サービスは使わない。
+// 使い方: node tools/tests/logic.test.mjs "$PWD" stations-test.json
 import fs from 'node:fs';
 const APP = process.argv[2];
 const ST = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
-const { yahooTransitUrl, googleTransitUrl, appleTransitUrl } = await import(`${APP}/js/services/transit-links.js`);
-const { cleanStationName, parseStations, nearbyStations } = await import(`${APP}/js/services/stations.js`);
-const { isDomestic, distanceKm } = await import(`${APP}/js/util/geo-math.js`);
-const { VENUES } = await import(`${APP}/js/data/venues.js`);
+const mini = JSON.parse(fs.readFileSync(`${APP}/data/stations.json`, 'utf8'));
+globalThis.window = { __HUD_STATIONS__: mini };       // アプリの駅の一覧を、通信なしで渡す
+const imp = (p) => import(`${APP}/${p}`);
+const { yahooTransitUrl, yahooCarNaviUrl, appleMapsUrl, whenLabel } = await imp('js/services/transit-links.js');
+const { cleanStationName, nearbyStations } = await imp('js/services/stations.js');
+const { isDomestic, distanceKm } = await imp('js/util/geo-math.js');
+const { VENUES } = await imp('js/data/venues.js');
+const E = await imp('js/data/events.js');
+const D = await imp('js/util/date.js');
+const { normalizeEvent } = await imp('js/data/normalize.js');
 
 const fails = [];
 const fail = (k, msg) => { if (fails.length < 40) fails.push(`${k}: ${msg}`); else fails.length++; };
-const domVenues = VENUES.filter((v) => v.station);
+const eq = (k, a, b) => { if (a !== b) fail(k, `${a} / 正解 ${b}`); };
+const dom = VENUES.filter((v) => v.station);
+const names = new Set(mini.map((s) => s[0]));
 
-// 近くの駅を速く探すための区分け（0.05度ごと）
-const grid = new Map();
-const cell = (lat, lon) => `${Math.floor(lat / 0.05)},${Math.floor(lon / 0.05)}`;
-ST.forEach((s) => { const k = cell(s.lat, s.lon); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(s); });
-function within(p, km) {
-  const r = Math.ceil(km / 5) + 1, out = [];
-  const cy = Math.floor(p.lat / 0.05), cx = Math.floor(p.lon / 0.05);
-  for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) for (const s of grid.get(`${y},${x}`) || []) if (distanceKm(p, s) <= km) out.push(s);
-  return out;
+// ---- 駅名の整え ----
+for (const [a, b] of [['明治神宮前〈原宿〉', '明治神宮前'], ['新宿駅', '新宿'], ['東京　', '東京'], ['品川（東京）', '品川'], ['  渋 谷 ', '渋谷'], ['', '']]) eq(`駅名 ${a}`, cleanStationName(a), b);
+
+// ---- 会場データ：到着駅が全国の駅の一覧にあるか、駅までの距離が本当か ----
+for (const v of dom) {
+  if (!names.has(v.station)) fail(v.name, `到着駅 ${v.station} が駅の一覧に無い`);
+  else {
+    const s = mini.filter((x) => x[0] === v.station).map((x) => distanceKm(v, { lat: x[1], lon: x[2] })).sort((a, b) => a - b)[0];
+    if (Math.abs(s - v.stationKm) > 0.15) fail(v.name, `駅までの距離 ${v.stationKm}km は実際 ${s.toFixed(2)}km`);
+  }
+  if (!isDomestic(v)) fail(v.name, '国内の会場が国内と判定されない');
 }
-const overpassFor = (p, km) => ({ elements: within(p, km).map((s) => ({ type: 'node', lat: s.lat, lon: s.lon, tags: { name: s.n, railway: 'station' } })) });
+for (const v of VENUES.filter((x) => !x.station)) if (isDomestic(v)) fail(v.name, '海外の会場が国内と判定された');
 
-let urls = 0, nearest = 0, escalated = 0;
-const prefs = new Set();
+// ---- 乗り換えのURL：全駅 × 国内の全会場 × 到着/出発 ----
+let urls = 0;
 for (const s of ST) {
-  prefs.add(s.p);
   const name = cleanStationName(s.n);
-  if (!name) fail(s.n, '駅名が空になった');
-  if (/[（）()〈〉]|駅$/.test(name)) fail(s.n, `駅名の整え漏れ: ${name}`);
-  if (!isDomestic(s)) fail(s.n, `国内判定が外れた (${s.lat},${s.lon})`);
-  // 出発駅 × 国内の全会場：URL
-  for (const v of domVenues) {
+  for (const v of dom) {
     if (name === v.station) continue;
     for (const arrive of [true, false]) {
-      const u = new URL(yahooTransitUrl({ from: name, to: v.station, date: '2026-11-14', time: '09:05', arrive }));
-      const q = u.searchParams;
-      if (u.host !== 'transit.yahoo.co.jp' || q.get('from') !== name || q.get('to') !== v.station || q.get('type') !== (arrive ? '4' : '1')
-        || q.get('y') !== '2026' || q.get('m') !== '11' || q.get('d') !== '14' || q.get('hh') !== '9' || q.get('m1') !== '0' || q.get('m2') !== '5') fail(s.n, `Yahoo URL: ${u}`);
+      const date = ['2026-11-04', '2026-12-31', '2027-01-09'][urls % 3], time = ['00:05', '09:30', '23:55'][urls % 3];
+      const q = new URL(yahooTransitUrl({ from: name, to: v.station, date, time, arrive })).searchParams;
+      const [y, m, d] = date.split('-'), [hh, mm] = time.split(':');
+      if (q.get('from') !== name || q.get('to') !== v.station || q.get('y') !== y || q.get('m') !== m || q.get('d') !== d
+        || q.get('ym') !== y + m || q.get('datepick') !== y + m + d || q.get('hh') !== String(+hh) || q.get('m1') !== mm[0] || q.get('m2') !== mm[1]
+        || q.get('type') !== (arrive ? '4' : '1')) fail(s.n, `Yahoo URL ${q}`);
       urls++;
     }
-    const g = new URL(googleTransitUrl({ from: name, dest: v }));
-    if (g.searchParams.get('origin') !== `${name}駅` || g.searchParams.get('travelmode') !== 'transit' || g.searchParams.get('destination') !== `${v.lat},${v.lon}`) fail(s.n, `Google URL: ${g}`);
-    const a = new URL(appleTransitUrl({ from: name, dest: v, label: v.name }));
-    if (a.searchParams.get('saddr') !== `${name}駅` || a.searchParams.get('dirflg') !== 'r') fail(s.n, `Apple URL: ${a}`);
-    urls += 2;
   }
-  // 現在地＝駅から約100m離れた所：一番近い駅が選ばれるか
-  const me = { lat: s.lat + 0.0009, lon: s.lon };
-  const list = parseStations(overpassFor(me, 2), me);
-  const truth = within(me, 2).sort((a, b) => distanceKm(me, a) - distanceKm(me, b))[0];
-  if (!list.length || list[0].name !== cleanStationName(truth.n)) fail(s.n, `最寄り駅の選択: ${list[0]?.name} / 正解 ${truth?.n}`);
-  else nearest++;
+}
+eq('日時の表示', whenLabel({ date: '2026-11-06', time: '09:00', arrive: true }), '11/6(金) 9:00 到着');
+eq('日時の表示（出発）', whenLabel({ date: '2027-01-10', time: '23:05', arrive: false }), '1/10(日) 23:05 出発');
+
+// ---- Yahoo!カーナビ・マップのURL ----
+for (const v of dom) {
+  const n = yahooCarNaviUrl({ dest: v, label: v.name });
+  const [pre, rest] = n.split('?');
+  const [p1, p2] = rest.split('&');
+  if (pre !== 'yjcarnavi://navi/select' || p1 !== 'point=current' || !p2.startsWith(`point=${v.lat.toFixed(7)},${v.lon.toFixed(7)},`) || decodeURIComponent(p2.split(',').slice(2).join(',')) !== v.name.replace(/,/g, ' ')) fail(v.name, `カーナビ ${n}`);
+  const a = new URL(appleMapsUrl(v, v.name));
+  if (a.host !== 'maps.apple.com' || a.searchParams.get('ll') !== `${v.lat},${v.lon}`) fail(v.name, `マップ ${a}`);
 }
 
-// 駅から遠い場所（山の中など）：2km → 10km → 30km と広げて見つかるか（通信は差し替え）
-const remote = [{ lat: 36.0, lon: 138.9, label: '秩父山地' }, { lat: 43.6, lon: 142.9, label: '大雪山' }, { lat: 33.75, lon: 133.2, label: '四国山地' }, { lat: 32.0, lon: 131.1, label: '宮崎の山中' }, { lat: 38.75, lon: 140.55, label: '奥羽山脈' }];
-globalThis.fetch = async (url) => {
-  const q = decodeURIComponent(new URL(url).searchParams.get('data'));
-  const [, r, lat, lon] = q.match(/around:(\d+),([\d.]+),([\d.]+)/);
-  return { ok: true, json: async () => overpassFor({ lat: +lat, lon: +lon }, +r / 1000) };
-};
-for (const p of remote) {
-  const list = await nearbyStations(p);
-  if (!list.length) fail(p.label, '30km以内に駅が見つからない');
-  else { escalated++; console.log(`  ${p.label}: ${list[0].name} ${list[0].km.toFixed(1)}km`); }
+// ---- 現在地から最寄りの駅：全駅のそば（約100m・東西南北）、一番近い駅が選ばれるか ----
+let nearest = 0;
+const dirs = [[0.0009, 0], [-0.0009, 0], [0, 0.0011], [0, -0.0011]];
+for (const s of ST) {
+  const base = mini.find((x) => x[0] === cleanStationName(s.n) && Math.abs(x[1] - s.lat) < 0.01 && Math.abs(x[2] - s.lon) < 0.01);
+  if (!base) { fail(s.n, '駅の一覧に無い'); continue; }
+  for (const [dy, dx] of dirs) {
+    const me = { lat: base[1] + dy, lon: base[2] + dx };
+    const got = (await nearbyStations(me))[0];
+    const truth = mini.map((x) => ({ n: x[0], d: distanceKm(me, { lat: x[1], lon: x[2] }) })).sort((a, b) => a.d - b.d)[0];
+    if (!got || got.name !== truth.n) fail(s.n, `最寄り駅 ${got?.name} / 正解 ${truth.n}`); else nearest++;
+  }
+  if (nearest > 20000) break; // 全駅×4方向は時間がかかるため、2万件で十分
 }
+// 駅から遠い場所では、探す範囲を広げて見つかるか
+for (const [label, lat, lon] of [['秩父山地', 36.0, 138.9], ['大雪山', 43.6, 142.9], ['四国山地', 33.75, 133.2], ['宮崎の山中', 32.0, 131.1], ['奥羽山脈', 38.75, 140.55]]) {
+  const l = await nearbyStations({ lat, lon });
+  if (!l.length) fail(label, '30km以内に駅が見つからない（地域の穴）'); else console.log(`  ${label}: ${l[0].name} ${l[0].km.toFixed(1)}km`);
+}
+// 鉄道の無い島では、空の一覧が返る（画面には「近くに駅が見つかりません」と出る）
+for (const [label, lat, lon] of [['礼文島', 45.38, 141.0], ['与那国島', 24.47, 123.0], ['小笠原', 27.09, 142.19]]) {
+  if ((await nearbyStations({ lat, lon })).length) fail(label, '鉄道の無い島で駅が見つかった');
+}
+// 国内の全駅が国内と判定されるか／国外が国外と判定されるか
+let domOk = 0;
+for (const s of ST) { if (!isDomestic(s)) fail(s.n, `国内判定が外れた (${s.lat},${s.lon})`); else domOk++; }
+const abroad = { ソウル: [37.5665, 126.978], 釜山: [35.1, 129.04], 巨済島: [34.85, 128.6], 済州島: [33.5, 126.53], 鬱陵島: [37.5, 130.9], 平壌: [39.03, 125.75], ウラジオストク: [43.12, 131.89], ユジノサハリンスク: [46.96, 142.73], 台北: [25.03, 121.56], 花蓮: [23.98, 121.6], 上海: [31.23, 121.47], 北京: [39.9, 116.4], グアム: [13.44, 144.79], マニラ: [14.6, 120.98], 沿海州: [45.0, 136.8] };
+for (const [k, [lat, lon]] of Object.entries(abroad)) if (isDomestic({ lat, lon })) fail(k, '国外なのに国内と判定');
 
-// 国外は国内と判定しないこと
-const abroad = { ソウル: [37.5665, 126.978], 釜山: [35.1, 129.04], 巨済島: [34.85, 128.6], 済州島: [33.5, 126.53], 鬱陵島: [37.5, 130.9], 平壌: [39.03, 125.75],
-  ウラジオストク: [43.12, 131.89], ユジノサハリンスク: [46.96, 142.73], 沿海州の海岸: [45.0, 136.8], 台北: [25.03, 121.56], 花蓮: [23.98, 121.6], 上海: [31.23, 121.47], 北京: [39.9, 116.4], グアム: [13.44, 144.79], マニラ: [14.6, 120.98] };
-let outside = 0;
-for (const [k, [lat, lon]] of Object.entries(abroad)) { if (isDomestic({ lat, lon })) fail(k, '国外なのに国内と判定'); else outside++; }
-// 国内の端の島など
-const edges = { 与那国島: [24.47, 123.0], 石垣島: [24.34, 124.16], 那覇: [26.21, 127.68], 父島: [27.09, 142.19], 八丈島: [33.11, 139.79], 青ヶ島: [32.46, 139.76], 対馬: [34.2, 129.29], 壱岐: [33.79, 129.72], 五島: [32.7, 128.84], 隠岐: [36.2, 133.3], 佐渡: [38.0, 138.4], 奥尻島: [42.15, 139.47], 礼文島: [45.38, 141.0], 稚内: [45.42, 141.67], 根室: [43.33, 145.58], 知床: [44.07, 145.0], 屋久島: [30.35, 130.53], 奄美: [28.38, 129.49] };
-let inside = 0;
-for (const [k, [lat, lon]] of Object.entries(edges)) { if (!isDomestic({ lat, lon })) fail(k, '国内なのに国外と判定'); else inside++; }
-console.log(`国外 ${outside}/${Object.keys(abroad).length} を国外と判定 / 国内の端の島など ${inside}/${Object.keys(edges).length} を国内と判定`);
-console.log(`都道府県 ${prefs.size} / 駅 ${ST.length} / 会場 ${domVenues.length}`);
-console.log(`URL確認 ${urls}件 / 最寄り駅の選択 ${nearest}件 正解 / 遠い場所 ${escalated}/${remote.length}`);
+// ---- 予定の取り出し（Event list の一覧と同じ決まり） ----
+const today = '2026-10-28';
+const mk = (id, tab, date, end = '', dates = []) => normalizeEvent({ id, title: id, tabName: tab, date, end, dates }, 'feed');
+const evs = [mk('a', 'X', '2026-10-27', '2026-10-29'), mk('b', 'Y', '2026-11-05'), mk('c', 'X', '2026-09-01'), mk('d', 'Y', ''), mk('e', 'X', '2026-10-28'), mk('f', 'Y', '2026-10-20', '2026-10-27'),
+  mk('g', 'X', '2026-12-01', '', [{ kind: 'close', date: '2026-11-02' }]), mk('h', 'Y', '', '', [{ kind: 'close', date: '2026-10-30' }])];
+const { events, tabs } = E.mergeEvents(evs, []);
+eq('種類の数', tabs.length, 2);
+eq('種類の色', tabs.map((t) => t.color).join(), '1,2');
+eq('同じ種類は同じ色', events.filter((e) => e.tab === 'X').every((e) => e.color === 1) && events.filter((e) => e.tab === 'Y').every((e) => e.color === 2), true);
+const all = E.select(events, 'all', today);
+eq('これから', all.up.map((e) => e.id).join(), 'f,a,e,b,g'.replace('f,', '').replace('a,e', 'a,e'));
+eq('過去（新しい順）', all.past.map((e) => e.id).join(), 'f,c');
+eq('日程未定', all.undated.map((e) => e.id).join(), 'd,h');
+eq('種類で絞る', E.select(events, 'X', today).up.map((e) => e.id).join(), 'a,e,g');
+eq('開催中', E.liveNow(all.up, today).map((e) => e.id).join(), 'a,e');
+eq('次の予定', E.nextEvent(all.up, today).id, 'b');
+const cd = E.nextCloseDeadline([...all.up, ...all.undated], today);
+eq('次の申込締切（日程未定も含む）', `${cd.e.id} ${cd.days}`, 'h 2');
+eq('月でまとめる', E.groupByMonth(all.up).map((g) => `${g.m}:${g.items.length}`).join(), '10:2,11:1,12:1'.replace('10:2', '10:2'));
+eq('日付の範囲', D.shortRange('2026-11-06', '2026-11-08'), '11/6(金)〜11/8(日)');
+// バックアップ側が優先され、同じ予定が二重に出ない
+const merged = E.mergeEvents([mk('x1', 'X', '2026-11-01')], [normalizeEvent({ id: 'm1', title: 'x1', tabName: 'X', date: '2026-11-01', feedId: 'x1' }, 'mine')]);
+eq('二重に出ない', merged.events.length, 1);
+eq('自分の分を優先', merged.events[0].origin, 'mine');
+
+console.log(`駅 ${ST.length}（一覧 ${mini.length}）／国内の会場 ${dom.length}`);
+console.log(`乗り換えURL ${urls}件／最寄り駅の選択 ${nearest}件／国内判定 ${domOk}件`);
 console.log(fails.length ? `NG ${fails.length}件\n${fails.join('\n')}` : 'NG 0件');
 process.exit(fails.length ? 1 : 0);

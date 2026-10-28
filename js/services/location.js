@@ -5,7 +5,7 @@ export function currentPosition({ timeout = 15000 } = {}) {
     if (!('geolocation' in navigator)) { reject(new Error('この端末では現在地を使えません')); return; }
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
-      (e) => reject(new Error(e.code === 1 ? '現在地の利用が許可されていません。iPhoneの「設定」→「プライバシーとセキュリティ」→「位置情報サービス」→「Safari」で許可するか、駅名を入力してください。' : '現在地を取得できませんでした。屋内などで電波が弱いときは、駅名を入力してください。')),
+      (e) => reject(new Error(e.code === 1 ? '位置情報が許可されていません。iPhoneの設定で許可するか、駅名を入力してください' : '現在地を取得できませんでした。駅名を入力してください')),
       { enableHighAccuracy: false, timeout, maximumAge: 0 }
     );
   });
